@@ -28,12 +28,15 @@ Implemented:
 - CLI as local runtime client (shared sessions)
 - MCP session tools (API-backed)
 - CRX Tab Group creation/update per session + popup session list
+- ChatGPT Loop Engine skeleton (`crx/loop.js`, SSE reader + `Loop.run`)
 
 Not implemented yet:
+- ChatGPT loop live testing (backend-api payload tuning)
+- loop ↔ runtime(gh) action delegation
 - persistent state beyond snapshot
 - GitHub API integration
 - Chrome Tab Groups auto-restore across browser restart
 - authentication
 - real MCP transport
-- AI conductor
+- AI conductor beyond the loop skeleton
 - Actions/deploy state detection

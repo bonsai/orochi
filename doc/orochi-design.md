@@ -2,6 +2,28 @@
 
 OrochiはSidebarからPrompt / Voice / Smartphone入力で8つのBrowser Tabを指揮し、各TabのDOMとWeb APIを融通してProjectを操作するBrowser Project Orchestra。
 
+## コア: ChatGPT Loop Engine
+
+ログイン済みのChatGPTをHTTP (`https://chatgpt.com/backend-api/conversation`) で叩き、
+1 Goal につきループさせる。API料金が掛からず、ブラウザセッションのまま無限に使える。
+
+```text
+Loop(crx/loop.js)
+  prompt(messages, session=目的語)
+    │  POST /backend-api/conversation (SSE)
+    ▼  レスポンスを解釈
+  action?
+    ├─ gh 操作 → runtime(deno) へ委譲 → 結果
+    └─ DOM 操作 → tabs へ委譲 → 結果
+    ▼
+  結果を messages へ append → 次の prompt / Goal.done
+```
+
+- コンテキストは Session（s1..s8）ごと。ループ状態も Session に紐づく
+- ChatGPT へ secret を渡さない。特権操作は runtime 側
+- 停止条件: Goal.done / maxSteps / blocked / 手動stop
+- 実体は `crx/loop.js`（段階: まず `chat` のみ、次に tool call 相当を追加）
+
 ## 基本単位
 
 **1 Session = 1 browser context**。進化形は **最大8セッションの並列**。Sidebar は9番目の Tab ではなく Command Center / 指揮席。

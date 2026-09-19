@@ -6,11 +6,16 @@
 
 Orochi connects the resources of one project and presents them as one operational context.
 
+The **core engine is a CRX-driven ChatGPT loop**: a logged-in ChatGPT session is used over
+plain HTTP (free, effectively unlimited) and looped per goal as the conductor. This is what
+makes the orchestration actually runnable at zero API cost.
+
 Orochi is the browser-projected integration of the terminal/agent/pipeline tools the
 developer already uses:
 
 | tool family | what Orochi takes from it |
 |---|---|
+| ChatGPT web (HTTP) | unlimited computing resource, the conductor driver |
 | tmux / herdr | parallel, persistent session & workspace management (up to 8 sessions) |
 | takt | agent orchestration (plan → implement → review → fix) |
 | aw | goal-shaped pipelines that run to completion from one command |
@@ -128,6 +133,8 @@ The POC is complete when:
 - a GitHub URL resolves to one Project
 - the Project exposes its canonical resources
 - CRX can create/update the project Tab Group
+- the CRX ChatGPT Loop drives at least one goal through collect → operate → return
+- the loop uses the logged-in ChatGPT session over HTTP (no API key, no cost)
 - CLI can resolve the same Project
 - API can resolve the same Project
 - MCP can invoke the same Core operation

@@ -2,9 +2,11 @@
 
 **AI Project Orchestra for the Browser**
 
-Orochi integrates the qualities of tmux/herdr (parallel sessions), takt (agent
-orchestration) and aw (goal-shaped automation) into one **Project Context** in the
-browser. Up to 8 sessions run in parallel across CLI, CRX and MCP on the same runtime.
+The core engine is a **CRX-driven ChatGPT loop**: a logged-in ChatGPT session is used over
+plain HTTP (free, effectively unlimited) and looped per goal as the conductor. Orochi
+integrates the qualities of tmux/herdr (parallel sessions), takt (agent orchestration) and
+aw (goal-shaped automation) into one **Project Context** in the browser. Up to 8 sessions
+run in parallel across CLI, CRX and MCP on the same runtime.
 
 > **Eight heads. One project state. One goal shape: collect → operate → return.**
 

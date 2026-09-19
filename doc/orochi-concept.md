@@ -1,14 +1,38 @@
 # Orochi — 再定義
 
 ## 一言
-**Orochiは、tmux / herdr / takt / aw を「ブラウザ = Project Context」で統合した存在である。
-並列セッション（tmux・herdr）×エージェントオーケストレーション（takt）×ゴール実行（aw）を
-1つのProjectに対する8つの作業面（8 Tabs）として束ね、ゴールの型を完成させる。**
+**Orochiは、ログイン済みのChatGPTを「HTTP」で無限に回すCRXのループ駆動エンジンをコアとする存在である。
+並列セッション（tmux・herdr）×オーケストレーション（takt）×ゴール実行（aw）を、
+CRXがChatGPTループで統合し、8つの頭をGitHub=canonに対して回してゴールの型を完成させる。**
+
+## コア: ChatGPT Loop Engine (CRX)
+
+**ブラウザにログインしたChatGPTは、API課金ではなく「HTTP」で使えば上限なく回せる計算資源。**
+OrochiはこれをCRX（ループドライバ）から1ゴールごとにループで駆動する。これがコア。
+
+```text
+Goal(done まで)
+  ↓
+prompt 合成
+  ↓
+ChatGPT (backend-api / ログイン済みセッション)  ← 無限に回せる HTTP
+  ↓
+結果を解釈
+  ├─ 特権操作は runtime(gh) へ委譲
+  └─ 結果を次の prompt に合成
+  ↓
+Goal.done なら終了 / blocked・上限で停止
+```
+
+- ループは `crx/loop.js` が保ち、会話コンテキストは Session（s1..s8）単位
+- **ChatGPTにsecretを渡さない**。GitHub操作などの特権は runtime 側
+- コストゼロでAIを「指揮者(conductor)」として実行できるのが、この設計の前提
 
 ## 何を統合しているのか
 
 | 道具の系譜 | 能力 | Orochi での受け持ち |
 |---|---|---|
+| ChatGPT (HTTP) | ログイン済みブラウザで上限なく回せるAI | **コアの計算資源**。ループで指揮者として実行 |
 | tmux / herdr | 複数セッションの並列・永続・ワークスペース整理 | **8 Session 並列**。CRX の Tab Group / CLI の Session / runtime のスロット |
 | takt | エージェントを計画→実装→レビュー→修正で振る orchestration | **Conductor 層**。Prompt→Command→Plan→8 Tabs→DOM/API→結果→Sidebar |
 | aw | ゴールを1コマンドで最後まで通す自動化 | **ゴールの型の実行**。collect→operate→return の完成まで一本で通す |
@@ -49,7 +73,7 @@ type Goal = {
 Project → Orochi Sidebar → Prompt → Tab Orchestra → 8 Tabs → DOM / Web API
 
 ## Core Model
-Project → Orochi Sidebar → Prompt → Tab Orchestra → 8 Tabs → DOM / Web API
+Project → Orochi Sidebar → Prompt → ChatGPT Loop (CRX) → Tab Orchestra → 8 Tabs → DOM / Web API
 
 ## 8 Tabs
 8 Tabsは8つの独立アプリではなく、Projectの8つの作業面。
@@ -112,7 +136,7 @@ CRXはcredential vaultではない。
 - canonical stateはWeb/API側に置く
 
 ## MVP
-Chrome → Sidebar → Project指定 → 8 Tabs生成 → Prompt → 対象Tab選択 → DOM/API操作 → 結果取得 → Sidebarへ集約
+Chrome → Sidebar → Project指定 → 8 Tabs生成 → Prompt → **ChatGPT Loop** → 対象Tab選択 → DOM/API操作 → 結果取得 → Sidebarへ集約
 
 ## 成功条件
 - Sidebarから指示できる
@@ -125,11 +149,12 @@ Chrome → Sidebar → Project指定 → 8 Tabs生成 → Prompt → 対象Tab�
 - CRXにcredentialを保存しない
 
 ## 原則
-> **Orochi = tmux/herdr×takt×aw を統合した Browser Project Orchestra**
+> **Orochi = tmux/herdr×takt×aw を CRX の ChatGPT Loop で統合した Browser Project Orchestra**
+> **ChatGPT (HTTP) = 無尽蔵な計算資源**
 > **Sidebar = 指揮席**
 > **8 Tabs = 8つの作業面**
 > **DOM + Web API = 操作面**
 > **Prompt = 指示**
-> **AI = Conductor**
+> **Loop = Conductor の実装**
 > **Goal = Project の収束（collect → operate → return）**
 > **GitHub = Canon**
