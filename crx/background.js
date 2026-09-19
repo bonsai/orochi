@@ -45,6 +45,90 @@ async function reportSession(id, tabGroupId) {
   });
 }
 
+// ---- browser ops: CLI / MCP enqueue on the runtime, CRX polls and drains ----
+
+async function pollBrowserOps() {
+  try {
+    const ops = await api("/browser/commands");
+    for (const op of ops) await execBrowserOp(op);
+  } catch (error) {
+    // runtime down — try again later
+  }
+  setTimeout(pollBrowserOps, 5000);
+}
+
+async function execBrowserOp(op) {
+  try {
+    const session = await api(`/sessions/${op.sessionId}`);
+    switch (op.kind) {
+      case "open":
+      case "group": {
+        const urls = (op.urls && op.urls.length)
+          ? op.urls
+          : session.project.resources.map((r) => r.url);
+        await ensureGroupForSession(session, urls);
+        break;
+      }
+      case "focus": {
+        if (session.tabGroupId == null) break;
+        const tabs = await chrome.tabs.query({ groupId: session.tabGroupId });
+        if (tabs.length) {
+          await chrome.tabGroups.update(session.tabGroupId, { collapsed: false });
+          await chrome.tabs.update(tabs[0].id, { active: true });
+        }
+        break;
+      }
+      case "close": {
+        if (session.tabGroupId == null) break;
+        const tabs = await chrome.tabs.query({ groupId: session.tabGroupId });
+        const ids = tabs.map((t) => t.id).filter((x) => x != null);
+        if (ids.length) await chrome.tabs.ungroup(ids);
+        break;
+      }
+    }
+  } catch (error) {
+    console.error("orochi: browser op failed", error);
+  }
+}
+
+function hash(url) {
+  try { return new URL(url).href; } catch { return null; }
+}
+
+async function ensureGroupForSession(session, urls) {
+  let groupId = session.tabGroupId;
+  const existing = groupId != null
+    ? await chrome.tabGroups.get(groupId).catch(() => undefined)
+    : undefined;
+
+  if (!existing) {
+    const first = await chrome.tabs.create({ url: urls[0], active: true });
+    const group = await chrome.tabGroups.create({
+      tabIds: [first.id],
+      title: session.project.repo
+    });
+    groupId = group.id;
+    await reportSession(session.id, groupId);
+    urls = urls.slice(1);
+  }
+
+  if (!urls.length) {
+    await chrome.tabGroups.update(groupId, { collapsed: false });
+    return;
+  }
+
+  const tabsInGroup = await chrome.tabs.query({ groupId });
+  const open = new Set(tabsInGroup.map((t) => hash(t.url)));
+  for (const u of urls) {
+    const target = hash(u);
+    if (!target || open.has(target)) continue;
+    const tab = await chrome.tabs.create({ url: u, active: false });
+    await chrome.tabs.group({ tabIds: tab.id, groupId });
+    open.add(target);
+  }
+  await chrome.tabGroups.update(groupId, { collapsed: false });
+}
+
 async function syncTabGroup(tabId, repo) {
   let session;
   try {
@@ -92,8 +176,10 @@ chrome.tabs.onActivated.addListener(async ({ tabId }) => {
 
 chrome.runtime.onInstalled.addListener(() => {
   checkSetup();
+  pollBrowserOps();
 });
 
 chrome.runtime.onStartup.addListener(() => {
   checkSetup();
+  pollBrowserOps();
 });

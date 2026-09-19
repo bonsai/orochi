@@ -15,13 +15,35 @@
 ```text
 crx/
 ├── loop.js        # ChatGPT Loop Engine（コアの実体）
-├── background.js   # session / Tab Group / runtime 連携
+├── background.js   # session / Tab Group / runtime 連携 + browser op 実行
 ├── popup.html|js   # session 一覧・ループの開始/停止
 └── manifest.json   # host_permissions: chatgpt.com
 ```
 
 runtime(deno) は状態（8 Session）と特権操作（gh）を握る。ループの指揮はCRXが持つ。
 ループ中のGitHub操作は runtime の API へ委譲し、**secretをChatGPTへ渡さない**。
+
+### Browser 操作は CLI / MCP からも可能
+
+CLI / MCP は `/browser/commands` へ op を enqueue し、CRX が5秒間隔でポーリングして
+実行する（Tab Group 作成・URL 追加・focus・ungroup）。
+
+```text
+cli / mcp
+   │ POST /browser/commands {kind, sessionId, urls}
+   ▼
+runtime (queue)
+   │ GET /browser/commands （CRX が drain）
+   ▼
+crx/background.js
+   ▼
+chrome.tabs / chrome.tabGroups
+```
+
+`orochi browser open <sessionId> [url...]`
+`orochi browser group <sessionId>`
+`orochi browser focus <sessionId>`
+`orochi browser close <sessionId>`
 
 ## Loop の状態遷移（1 Goalあたり）
 

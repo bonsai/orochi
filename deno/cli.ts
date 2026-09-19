@@ -2,12 +2,28 @@ import type { Session } from "./core/types.ts";
 
 const DEFAULT_PORT = Number(Deno.env.get("OROCHI_PORT") || 8787);
 
+function parseArgs(): { port: number; positional: string[] } {
+  const raw = Deno.args.slice();
+  let port = DEFAULT_PORT;
+  const positional: string[] = [];
+  for (let i = 0; i < raw.length; i++) {
+    const a = raw[i];
+    if (a === "--port") {
+      port = Number(raw[i + 1]);
+      i += 1;
+      continue;
+    }
+    if (a.startsWith("--port=")) {
+      port = Number(a.slice(7));
+      continue;
+    }
+    positional.push(a);
+  }
+  return { port, positional };
+}
+
 function baseUrl(): string {
-  const idx = Deno.args.indexOf("--port");
-  const port = idx >= 0 && Deno.args[idx + 1]
-    ? Number(Deno.args[idx + 1])
-    : DEFAULT_PORT;
-  return `http://127.0.0.1:${port}`;
+  return `http://127.0.0.1:${parseArgs().port}`;
 }
 
 async function api(path: string, method = "GET", body?: unknown) {
@@ -34,12 +50,17 @@ function usage(): never {
   orochi session ls
   orochi session close <id>
   orochi session focus <id>
+  orochi browser open <id> [url...]   # CLI → runtime → CRX でブラウザ操作
+  orochi browser group <id>
+  orochi browser focus <id>
+  orochi browser close <id>
 
   --port <n>   override runtime port`);
   Deno.exit(0);
 }
 
-const [command, sub, value] = Deno.args.filter((a) => !a.startsWith("--"));
+const { positional } = parseArgs();
+const [command, sub, value] = positional;
 
 switch (`${command} ${sub ?? ""}`) {
   case "resolve": {
@@ -72,6 +93,17 @@ switch (`${command} ${sub ?? ""}`) {
     if (!value) usage();
     const session = await api(`/sessions/${value}`);
     console.log(JSON.stringify(session, null, 2));
+    break;
+  }
+  case "browser open":
+  case "browser group":
+  case "browser focus":
+  case "browser close": {
+    if (!value) usage();
+    const urls = positional.slice(positional.indexOf(value) + 1);
+    const op: Record<string, unknown> = { kind: sub, sessionId: value };
+    if (urls.length) op.urls = urls;
+    console.log(JSON.stringify(await api("/browser/commands", "POST", { op })));
     break;
   }
   default:

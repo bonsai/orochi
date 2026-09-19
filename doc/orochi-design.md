@@ -24,6 +24,22 @@ Loop(crx/loop.js)
 - 停止条件: Goal.done / maxSteps / blocked / 手動stop
 - 実体は `crx/loop.js`（段階: まず `chat` のみ、次に tool call 相当を追加）
 
+## Browser 操作（CLI / MCP → CRX）
+
+ブラウザ操作は CRX 専用ではなく、CLI / MCP からも発行できる。
+runtime が `/browser/commands` のキューを持ち、CRX がポーリングして実行する。
+
+```text
+CLI / MCP ──POST /browser/commands──▶ runtime(queue) ──GET/drain──▶ CRX ──▶ tabs/groups
+```
+
+- `open`  = URL を Tab Group に開く（重複は除外）
+- `group` = セッションのリソースを Tab Group 化
+- `focus` = Tab Group を展開して先頭タブへ
+- `close` = Tab Group を ungroup する
+
+これにより「CRX がループの指揮、CLI がブラウザ操作の別席」の双方向になる。
+
 ## 基本単位
 
 **1 Session = 1 browser context**。進化形は **最大8セッションの並列**。Sidebar は9番目の Tab ではなく Command Center / 指揮席。

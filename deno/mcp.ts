@@ -18,4 +18,6 @@ export const tools = {
   session_list: () => call("GET", "/sessions"),
   session_close: (id: string) => call("DELETE", `/sessions/${id}`),
   session_focus: (id: string) => call("GET", `/sessions/${id}`),
+  browser_open: (op: { sessionId: string; urls?: string[] }) =>
+    call("POST", "/browser/commands", { op: { kind: "open", ...op } }),
 };

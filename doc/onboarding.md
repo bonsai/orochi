@@ -62,10 +62,12 @@ deno run deno/cli.ts resolve https://github.com/bonsai/orochi
 deno run deno/cli.ts session open https://github.com/bonsai/orochi
 deno run deno/cli.ts session ls
 deno run deno/cli.ts session close s1
+deno run deno/cli.ts browser open s1 https://github.com/bonsai/orochi/issues
 ~~~
 
 CLI は local runtime のクライアント。セッションは runtime が最大8個保持し、
-CLI / CRX / MCP から同じセッションを操作できる。状態は
+CLI / CRX / MCP から同じセッションを操作できる。`browser` コマンドは runtime の
+キューを経由して CRX がタブを開く（CLI からもブラウザ操作が可能）。状態は
 `$HOME/.orochi/sessions.json` に保存され、runtime 再起動後も復元される。
 
 ### API

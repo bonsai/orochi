@@ -54,3 +54,9 @@ export type Goal = {
   status: GoalStatus;
   canonOk: boolean;
 };
+
+export type BrowserOp =
+  | { kind: "open"; sessionId: string; urls?: string[] }
+  | { kind: "group"; sessionId: string }
+  | { kind: "focus"; sessionId: string }
+  | { kind: "close"; sessionId: string };
