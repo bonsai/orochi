@@ -1,9 +1,23 @@
 const API = "http://127.0.0.1:8787";
 
+import { runGoal } from "./loop.js";
+
 async function api(path, opts = {}) {
   const res = await fetch(API + path, opts);
   if (!res.ok) throw new Error(`${res.status}`);
   return res.json();
+}
+
+async function logFromCrx(level, message, from = "crx") {
+  try {
+    await api("/debug/log", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ from, level, message })
+    });
+  } catch {
+    // runtime down — skip
+  }
 }
 
 async function checkSetup() {
@@ -46,15 +60,29 @@ async function reportSession(id, tabGroupId) {
 }
 
 // ---- browser ops: CLI / MCP enqueue on the runtime, CRX polls and drains ----
+// MV3: setTimeout chains do not keep the service worker alive (it gets killed
+// ~30s after the last event). chrome.alarms persists across idle and re-wakes
+// the worker, so the poll loop is driven by alarms, not timers.
+
+const POLL_PERIOD_MIN = 0.5; // Chrome minimum for alarms
 
 async function pollBrowserOps() {
   try {
     const ops = await api("/browser/commands");
     for (const op of ops) await execBrowserOp(op);
   } catch (error) {
-    // runtime down — try again later
+    // runtime down — retried on the next alarm
   }
-  setTimeout(pollBrowserOps, 5000);
+}
+
+async function wakePolling() {
+  await checkSetup();
+  await pollBrowserOps();
+}
+
+function schedulePolling() {
+  chrome.alarms.create("orochi-poll", { periodInMinutes: POLL_PERIOD_MIN });
+  wakePolling();
 }
 
 async function execBrowserOp(op) {
@@ -67,15 +95,16 @@ async function execBrowserOp(op) {
           ? op.urls
           : session.project.resources.map((r) => r.url);
         await ensureGroupForSession(session, urls);
+        await logFromCrx("info", `${op.kind} ${op.sessionId} → group ok`);
         break;
       }
       case "focus": {
         if (session.tabGroupId == null) break;
         const tabs = await chrome.tabs.query({ groupId: session.tabGroupId });
         if (tabs.length) {
-          await chrome.tabGroups.update(session.tabGroupId, { collapsed: false });
           await chrome.tabs.update(tabs[0].id, { active: true });
         }
+        await logFromCrx("info", `focus ${op.sessionId} ok`);
         break;
       }
       case "close": {
@@ -83,11 +112,23 @@ async function execBrowserOp(op) {
         const tabs = await chrome.tabs.query({ groupId: session.tabGroupId });
         const ids = tabs.map((t) => t.id).filter((x) => x != null);
         if (ids.length) await chrome.tabs.ungroup(ids);
+        await logFromCrx("info", `close ${op.sessionId} ok`);
+        break;
+      }
+      case "loop": {
+        const outcome = await runGoal(session, op.prompt);
+        await logFromCrx(
+          outcome.status === "submitted" || outcome.gotText
+            ? "info"
+            : "warn",
+          `${op.sessionId} loop(${outcome.engine}) → ${outcome.status}${outcome.detail ? " — " + outcome.detail : ""}${outcome.text ? " — " + outcome.text.slice(0, 120) : ""}`
+        );
         break;
       }
     }
   } catch (error) {
     console.error("orochi: browser op failed", error);
+    await logFromCrx("error", `op ${op.kind} ${op.sessionId} failed: ${String(error)}`);
   }
 }
 
@@ -95,27 +136,25 @@ function hash(url) {
   try { return new URL(url).href; } catch { return null; }
 }
 
+// NOTE: chrome.tabGroups.* is NOT available from MV3 service workers.
+// Group ops go through chrome.tabs.group / chrome.tabs.ungroup instead.
+
 async function ensureGroupForSession(session, urls) {
   let groupId = session.tabGroupId;
-  const existing = groupId != null
-    ? await chrome.tabGroups.get(groupId).catch(() => undefined)
-    : undefined;
+  const groupTabs = groupId == null
+    ? []
+    : await chrome.tabs.query({ groupId }).catch(() => []);
+  const existing = groupId != null && groupTabs.length > 0;
 
   if (!existing) {
     const first = await chrome.tabs.create({ url: urls[0], active: true });
-    const group = await chrome.tabGroups.create({
-      tabIds: [first.id],
-      title: session.project.repo
-    });
-    groupId = group.id;
+    const grouped = await chrome.tabs.group({ tabIds: [first.id] });
+    groupId = grouped;
     await reportSession(session.id, groupId);
     urls = urls.slice(1);
   }
 
-  if (!urls.length) {
-    await chrome.tabGroups.update(groupId, { collapsed: false });
-    return;
-  }
+  if (!urls.length) return;
 
   const tabsInGroup = await chrome.tabs.query({ groupId });
   const open = new Set(tabsInGroup.map((t) => hash(t.url)));
@@ -126,7 +165,6 @@ async function ensureGroupForSession(session, urls) {
     await chrome.tabs.group({ tabIds: tab.id, groupId });
     open.add(target);
   }
-  await chrome.tabGroups.update(groupId, { collapsed: false });
 }
 
 async function syncTabGroup(tabId, repo) {
@@ -141,18 +179,13 @@ async function syncTabGroup(tabId, repo) {
   try {
     let groupId = session.tabGroupId;
     if (groupId != null) {
-      const group = await chrome.tabGroups.get(groupId).catch(() => undefined);
-      if (group) {
+      const groupTabs = await chrome.tabs.query({ groupId }).catch(() => []);
+      if (groupTabs.length) {
         await chrome.tabs.group({ tabIds: tabId, groupId });
-        await chrome.tabGroups.update(groupId, { collapsed: false });
         return;
       }
     }
-    const created = await chrome.tabGroups.create({
-      tabIds: [tabId],
-      title: repo
-    });
-    groupId = created.id;
+    groupId = await chrome.tabs.group({ tabIds: [tabId] });
     session = await reportSession(session.id, groupId);
     console.log("orochi: tab group created for", repo, "#" + groupId);
   } catch (err) {
@@ -174,12 +207,9 @@ chrome.tabs.onActivated.addListener(async ({ tabId }) => {
   if (repo) syncTabGroup(tabId, repo);
 });
 
-chrome.runtime.onInstalled.addListener(() => {
-  checkSetup();
-  pollBrowserOps();
-});
+chrome.runtime.onInstalled.addListener(() => schedulePolling());
+chrome.runtime.onStartup.addListener(() => schedulePolling());
 
-chrome.runtime.onStartup.addListener(() => {
-  checkSetup();
-  pollBrowserOps();
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === "orochi-poll") wakePolling();
 });

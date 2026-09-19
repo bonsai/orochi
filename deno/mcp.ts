@@ -7,7 +7,8 @@ export type Tools = ReturnType<typeof makeTools>;
 export function makeTools(apiBase: string) {
   return {
     resolve_project: (url: string) => api(apiBase, "/resolve", "POST", { url }),
-    session_open: (url: string) => api(apiBase, "/sessions", "POST", { url }),
+    session_open: (url: string, engine = "chatgpt") =>
+      api(apiBase, "/sessions", "POST", { url, engine }),
     session_list: () => api(apiBase, "/sessions"),
     session_close: (id: string) => api(apiBase, `/sessions/${id}`, "DELETE"),
     session_focus: (id: string) => api(apiBase, `/sessions/${id}`),
@@ -15,6 +16,11 @@ export function makeTools(apiBase: string) {
       api(apiBase, "/browser/commands", "POST", {
         op: { kind: "open", ...op },
       }),
+    loop_run: (op: { sessionId: string; prompt: string; engine?: string }) =>
+      api(apiBase, "/browser/commands", "POST", {
+        op: { kind: "loop", ...op },
+      }),
+    debug_logs: () => api(apiBase, "/debug/logs"),
   };
 }
 
@@ -35,7 +41,14 @@ const MCP_TOOLS = [
     description: "Open a new Orochi session (one of up to 8) for a GitHub URL.",
     inputSchema: {
       type: "object",
-      properties: { url: { type: "string" } },
+      properties: {
+        url: { type: "string" },
+        engine: {
+          type: "string",
+          enum: ["chatgpt", "suno"],
+          description: "processing engine (default chatgpt)",
+        },
+      },
       required: ["url"],
     },
   },
@@ -73,6 +86,24 @@ const MCP_TOOLS = [
       },
       required: ["sessionId"],
     },
+  },
+  {
+    name: "loop_run",
+    description: "Run one Goal through the session's engine (chatgpt/suno).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        sessionId: { type: "string" },
+        prompt: { type: "string" },
+        engine: { type: "string", enum: ["chatgpt", "suno"] },
+      },
+      required: ["sessionId", "prompt"],
+    },
+  },
+  {
+    name: "debug_logs",
+    description: "Read what the CRX reported to the runtime.",
+    inputSchema: { type: "object", properties: {} },
   },
 ];
 

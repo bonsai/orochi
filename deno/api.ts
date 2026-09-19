@@ -1,10 +1,19 @@
 import { resolveProject } from "./core/project.ts";
 import { SessionStore, defaultSessionPath } from "./core/store.ts";
-import type { BrowserOp } from "./core/types.ts";
+import type { BrowserOp, EngineId } from "./core/types.ts";
+
+export type DebugEntry = {
+  at: number;
+  from: string;
+  level: "info" | "warn" | "error";
+  message: string;
+};
 
 export function createHandler(store: SessionStore) {
   // Browser operation queue: CLI / MCP enqueue, CRX polls and drains.
   const browserOps: BrowserOp[] = [];
+  // Debug/telemetry: CRX reports what it executed; CLI can read it back.
+  const debugLogs: DebugEntry[] = [];
 
   const handler = async (req: Request): Promise<Response> => {
     const url = new URL(req.url);
@@ -19,6 +28,21 @@ export function createHandler(store: SessionStore) {
         });
       }
 
+      if (url.pathname === "/debug/logs" && req.method === "GET") {
+        return Response.json(debugLogs.slice());
+      }
+
+      if (url.pathname === "/debug/log" && req.method === "POST") {
+        const body = await req.json();
+        debugLogs.push({
+          at: Date.now(),
+          from: String(body.from ?? "unknown"),
+          level: body.level ?? "info",
+          message: String(body.message ?? ""),
+        });
+        return Response.json({ ok: true, logs: debugLogs.length });
+      }
+
       if (url.pathname === "/resolve" && req.method === "POST") {
         const body = await req.json();
         return Response.json(resolveProject(body.url ?? ""));
@@ -30,7 +54,10 @@ export function createHandler(store: SessionStore) {
 
       if (url.pathname === "/sessions" && req.method === "POST") {
         const body = await req.json();
-        const session = store.create(body.url ?? "");
+        const session = store.create(
+          body.url ?? "",
+          (body.engine ?? "chatgpt") as EngineId,
+        );
         return Response.json(session, { status: 201 });
       }
 
@@ -48,7 +75,8 @@ export function createHandler(store: SessionStore) {
           return Response.json({ ok: true, queued: browserOps.length });
         }
         if (req.method === "GET") {
-          return Response.json(browserOps.splice(0));
+          const peek = url.searchParams.get("peek") === "1";
+          return Response.json(peek ? browserOps.slice() : browserOps.splice(0));
         }
       }
 
@@ -83,7 +111,7 @@ export function createHandler(store: SessionStore) {
     }
   };
 
-  return { handler, browserOps };
+  return { handler, browserOps, debugLogs };
 }
 
 function jsonError(status: number, message: string) {

@@ -35,22 +35,31 @@ Deno.test("CLI / MCP / CRX が同じ Session を扱う（cross-interface consist
   // CLI 相当: POST /sessions
   const viaCli = (await api(server.base, "/sessions", "POST", {
     url: "https://github.com/bonsai/orochi",
-  })) as { id: string; project: { repo: string } };
+  })) as { id: string; project: { repo: string }; engine: string };
   assertEquals(viaCli.id, "s1");
   assertEquals(viaCli.project.repo, "bonsai/orochi");
+  assertEquals(viaCli.engine, "chatgpt"); // engine 既定値
+
+  // engine 指定で suno セッションを作る
+  const viaCli2 = (await api(server.base, "/sessions", "POST", {
+    url: "https://github.com/bonsai/orochi",
+    engine: "suno",
+  })) as { id: string; engine: string };
+  assertEquals(viaCli2.id, "s2");
+  assertEquals(viaCli2.engine, "suno");
 
   // MCP 相当: tools で同一リストが見える
   const tools = makeTools(server.base);
-  const viaMcp = (await tools.session_list()) as Array<{ id: string }>;
-  assertEquals(viaMcp.length, 1);
+  const viaMcp = (await tools.session_list()) as Array<{ id: string; engine?: string }>;
+  assertEquals(viaMcp.length, 2);
   assertEquals(viaMcp[0].id, "s1");
 
-  // MCP 相当: 2つ目を開く → cli 側からも s2 として見える
+  // MCP 相当: 3つ目を開く → cli 側からも s3 として見える
   const viaMcp2 = (await tools.session_open(
     "https://github.com/bonsai/gh-obs-crx",
   )) as { id: string };
-  assertEquals(viaMcp2.id, "s2");
-  assertEquals(((await api(server.base, "/sessions")) as unknown[]).length, 2);
+  assertEquals(viaMcp2.id, "s3");
+  assertEquals(((await api(server.base, "/sessions")) as unknown[]).length, 3);
 
   // CRX 相当: browser op を enqueue → poll (GET) で drain され空になる
   const queued = (await api(server.base, "/browser/commands", "POST", {

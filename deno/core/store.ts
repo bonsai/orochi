@@ -1,4 +1,4 @@
-import type { Session, SessionId, SessionSnapshot } from "./types.ts";
+import type { Session, SessionId, SessionSnapshot, EngineId } from "./types.ts";
 import { resolveProject } from "./project.ts";
 
 export const SESSION_CAP = 8;
@@ -18,7 +18,10 @@ export class SessionStore {
       const text = Deno.readTextFileSync(this.path);
       const snap = JSON.parse(text) as SessionSnapshot;
       if (snap.version === 1) {
-        for (const s of snap.sessions) this.#sessions.set(s.id, s);
+        for (const s of snap.sessions) {
+          if (!s.engine) (s as { engine?: string }).engine = "chatgpt";
+          this.#sessions.set(s.id, s);
+        }
       }
     } catch {
       // no snapshot yet (or corrupt) -> start empty
@@ -49,7 +52,7 @@ export class SessionStore {
     return this.#sessions.get(id);
   }
 
-  create(url: string): Session {
+  create(url: string, engine: EngineId = "chatgpt"): Session {
     if (this.#sessions.size >= SESSION_CAP) {
       const active = this.list().map((s) => s.id).join(", ");
       throw new Error(`session store full (max ${SESSION_CAP}): active ${active}`);
@@ -61,6 +64,7 @@ export class SessionStore {
     const session: Session = {
       id,
       project,
+      engine,
       status: "active",
       createdAt: now,
       lastActiveAt: now,

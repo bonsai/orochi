@@ -1,62 +1,31 @@
-// Orochi ChatGPT Loop Engine — core
-// Drives a logged-in ChatGPT session over HTTP and loops one Goal to completion.
+// Orochi Loop — engine registry.
+// One Goal = one loop step through the session's engine.
+// Engines are domain-specific drivers under crx/engines/:
+//   chatgpt.js : chatgpt.com  (backend-api, HTTP SSE)
+//   suno.js    : suno.com     (content script DOM automation)
+// Sessions s1..s8 run these engines in parallel, each in its own Tab Group.
 
-const CHATGPT = "https://chatgpt.com/backend-api";
+import { chatgptEngine } from "./engines/chatgpt.js";
+import { sunoEngine } from "./engines/suno.js";
 
-// NOTE: the backend-api payload is not a public contract. Mirror what the
-// browser sends and adjust after live testing (model, conversation_mode,
-// parent_message_id, etc.).
-export async function sendPrompt(messages) {
-  const res = await fetch(`${CHATGPT}/conversation`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      action: "next",
-      messages,
-      parent_message_id: crypto.randomUUID(),
-      model: "gpt-5-mini", // placeholder
-      timezone_offset_min: -new Date().getTimezoneOffset(),
-      force_paragen: false,
-      conversation_mode: { kind: "primary_assistant" }
-    })
-  });
-  if (!res.ok) throw new Error(`chatgpt http ${res.status}`);
-  return readSse(res);
+export const ENGINES = { chatgpt: chatgptEngine, suno: sunoEngine };
+
+// One loop step for a session, dispatched to its domain engine.
+export async function runGoal(session, prompt) {
+  const engine = ENGINES[session.engine] ?? ENGINES.chatgpt;
+  const outcome = await engine.run(session, prompt);
+  return {
+    engine: session.engine,
+    status: outcome.status,
+    detail: outcome.detail ?? "",
+    text: outcome.text ?? "",
+    gotText: !!outcome.text
+  };
 }
 
-function readSse(res) {
-  return new Promise((resolve, reject) => {
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let text = "";
-    let parsed = "";
-    (function pump() {
-      reader.read().then(({ done, value }) => {
-        if (done) return resolve(parsed);
-        text += decoder.decode(value, { stream: true });
-        const lines = text.split("\n");
-        text = lines.pop();
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const payload = line.slice(6);
-          if (!payload.trim()) continue;
-          try {
-            const evt = JSON.parse(payload);
-            const content =
-              evt?.message?.content?.parts?.join?.("\n") ??
-              evt?.message?.content ?? "";
-            if (content) parsed += content;
-          } catch {
-            // partial JSON chunk, ignore
-          }
-        }
-        pump();
-      }).catch(reject);
-    })();
-  });
-}
+// ---- legacy chatgpt-only Loop class (kept for direct use) ----
+import { sendPrompt } from "./engines/chatgpt.js";
 
-// One Goal = one Loop. Messages are kept per session (s1..s8).
 export class Loop {
   constructor({ sessionId, messages = [], log = [] }) {
     this.sessionId = sessionId;
@@ -68,7 +37,10 @@ export class Loop {
   async step() {
     if (this.stopped) return { done: true, reason: "stopped" };
     const text = await sendPrompt(this.messages);
-    this.messages.push({ role: "assistant", content: { types: ["text"], text: text || "" } });
+    this.messages.push({
+      role: "assistant",
+      content: { types: ["text"], text: text || "" }
+    });
     this.log.push({ at: Date.now(), step: this.messages.length, text });
     return { done: false, text };
   }

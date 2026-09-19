@@ -43,7 +43,7 @@ function usage(): never {
   console.log(`orochi — CLI (talks to local runtime :${DEFAULT_PORT})
 
   orochi resolve <url>
-  orochi session open <url>
+  orochi session open <url> [engine]   # engine: chatgpt | suno
   orochi session ls
   orochi session close <id>
   orochi session focus <id>
@@ -51,6 +51,8 @@ function usage(): never {
   orochi browser group <id>
   orochi browser focus <id>
   orochi browser close <id>
+  orochi loop run <id> <prompt>       # engine で Goal 1件を処理（chatgpt/suno）
+  orochi debug logs                   # CRX が runtime へ報告した実行ログ
 
   --port <n>   override runtime port`);
   Deno.exit(0);
@@ -67,14 +69,21 @@ switch (`${command} ${sub ?? ""}`) {
   }
   case "session open": {
     if (!value) usage();
-    console.log(JSON.stringify(await call("/sessions", "POST", { url: value }), null, 2));
+    const engine = sub === "open" ? positional[positional.indexOf(value) + 1] : undefined;
+    console.log(
+      JSON.stringify(
+        await call("/sessions", "POST", { url: value, ...(engine ? { engine } : {}) }),
+        null,
+        2,
+      ),
+    );
     break;
   }
   case "session ls": {
-    const sessions = (await call("/sessions")) as { id: string; project: { repo: string }; status: string; tabGroupId?: number; lastActiveAt: number }[];
+    const sessions = (await call("/sessions")) as { id: string; project: { repo: string }; engine: string; status: string; tabGroupId?: number; lastActiveAt: number }[];
     for (const s of sessions) {
       console.log(
-        `${s.id}\t${s.project.repo}\t${s.status}\t${s.tabGroupId ?? "-"}\t${s.lastActiveAt}`,
+        `${s.id}\t${s.project.repo}\t${s.engine}\t${s.status}\t${s.tabGroupId ?? "-"}\t${s.lastActiveAt}`,
       );
     }
     break;
@@ -98,6 +107,19 @@ switch (`${command} ${sub ?? ""}`) {
     const op: Record<string, unknown> = { kind: sub, sessionId: value };
     if (urls.length) op.urls = urls;
     console.log(JSON.stringify(await call("/browser/commands", "POST", { op })));
+    break;
+  }
+  case "loop run": {
+    if (!value) usage();
+    const rest = positional.slice(positional.indexOf(value) + 1);
+    const prompt = rest.join(" ");
+    if (!prompt) usage();
+    const op: Record<string, unknown> = { kind: "loop", sessionId: value, prompt };
+    console.log(JSON.stringify(await call("/browser/commands", "POST", { op })));
+    break;
+  }
+  case "debug logs": {
+    console.log(JSON.stringify(await call("/debug/logs"), null, 2));
     break;
   }
   default:

@@ -24,11 +24,14 @@ export type Action =
 
 export type SessionId = string;
 
+export type EngineId = "chatgpt" | "suno";
+
 export type SessionStatus = "active" | "idle";
 
 export type Session = {
   id: SessionId;
   project: Project;
+  engine: EngineId;
   status: SessionStatus;
   tabGroupId?: number;
   createdAt: number;
@@ -59,4 +62,5 @@ export type BrowserOp =
   | { kind: "open"; sessionId: string; urls?: string[] }
   | { kind: "group"; sessionId: string }
   | { kind: "focus"; sessionId: string }
-  | { kind: "close"; sessionId: string };
+  | { kind: "close"; sessionId: string }
+  | { kind: "loop"; sessionId: string; prompt: string; engine?: EngineId };
