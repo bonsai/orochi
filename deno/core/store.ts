@@ -11,7 +11,7 @@ export function defaultSessionPath(): string {
 export class SessionStore {
   #sessions = new Map<SessionId, Session>();
 
-  constructor(private readonly path: string) {}
+  constructor(public readonly path: string) {}
 
   load(): void {
     try {

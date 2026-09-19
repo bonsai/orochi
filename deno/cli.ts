@@ -1,4 +1,4 @@
-import type { Session } from "./core/types.ts";
+import { api, ApiError } from "./http.ts";
 
 const DEFAULT_PORT = Number(Deno.env.get("OROCHI_PORT") || 8787);
 
@@ -26,20 +26,17 @@ function baseUrl(): string {
   return `http://127.0.0.1:${parseArgs().port}`;
 }
 
-async function api(path: string, method = "GET", body?: unknown) {
-  const res = await fetch(baseUrl() + path, {
-    method,
-    headers: body !== undefined
-      ? { "content-type": "application/json" }
-      : undefined,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
-  const text = await res.text();
-  if (!res.ok) {
-    console.error(`${res.status}: ${text}`);
+async function call(path: string, method = "GET", body?: unknown) {
+  try {
+    return await api(baseUrl(), path, method, body);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      console.error(`${error.status}: ${error.message}`);
+    } else {
+      console.error(String(error));
+    }
     Deno.exit(1);
   }
-  return text ? JSON.parse(text) : null;
 }
 
 function usage(): never {
@@ -65,18 +62,16 @@ const [command, sub, value] = positional;
 switch (`${command} ${sub ?? ""}`) {
   case "resolve": {
     if (!value) usage();
-    const project = await api("/resolve", "POST", { url: value });
-    console.log(JSON.stringify(project, null, 2));
+    console.log(JSON.stringify(await call("/resolve", "POST", { url: value }), null, 2));
     break;
   }
   case "session open": {
     if (!value) usage();
-    const session = await api("/sessions", "POST", { url: value });
-    console.log(JSON.stringify(session, null, 2));
+    console.log(JSON.stringify(await call("/sessions", "POST", { url: value }), null, 2));
     break;
   }
   case "session ls": {
-    const sessions = (await api("/sessions")) as Session[];
+    const sessions = (await call("/sessions")) as { id: string; project: { repo: string }; status: string; tabGroupId?: number; lastActiveAt: number }[];
     for (const s of sessions) {
       console.log(
         `${s.id}\t${s.project.repo}\t${s.status}\t${s.tabGroupId ?? "-"}\t${s.lastActiveAt}`,
@@ -86,13 +81,12 @@ switch (`${command} ${sub ?? ""}`) {
   }
   case "session close": {
     if (!value) usage();
-    console.log(JSON.stringify(await api(`/sessions/${value}`, "DELETE")));
+    console.log(JSON.stringify(await call(`/sessions/${value}`, "DELETE")));
     break;
   }
   case "session focus": {
     if (!value) usage();
-    const session = await api(`/sessions/${value}`);
-    console.log(JSON.stringify(session, null, 2));
+    console.log(JSON.stringify(await call(`/sessions/${value}`), null, 2));
     break;
   }
   case "browser open":
@@ -103,7 +97,7 @@ switch (`${command} ${sub ?? ""}`) {
     const urls = positional.slice(positional.indexOf(value) + 1);
     const op: Record<string, unknown> = { kind: sub, sessionId: value };
     if (urls.length) op.urls = urls;
-    console.log(JSON.stringify(await api("/browser/commands", "POST", { op })));
+    console.log(JSON.stringify(await call("/browser/commands", "POST", { op })));
     break;
   }
   default:

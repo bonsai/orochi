@@ -6,7 +6,7 @@
     "dev": "deno run --allow-net --allow-env --allow-read --allow-write deno/api.ts",
     "cli": "deno run --allow-net --allow-env deno/cli.ts",
     "check": "deno check deno/*.ts deno/core/*.ts",
-    "test": "deno test"
+    "test": "deno test --allow-net --allow-read --allow-write"
   },
   "imports": {}
 }

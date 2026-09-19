@@ -30,6 +30,8 @@ Implemented:
 - CRX Tab Group creation/update per session + popup session list
 - ChatGPT Loop Engine skeleton (`crx/loop.js`, SSE reader + `Loop.run`)
 - Browser ops from CLI/MCP: runtime command queue drained by CRX (`open/group/focus/close`)
+- Real MCP transport: stdio JSON-RPC (initialize / tools/list / tools/call), shared HTTP client (`deno/http.ts`)
+- Cross-interface consistency test (`deno task test`): CLI / MCP / CRX-queue on the same session
 
 Not implemented yet:
 - ChatGPT loop live testing (backend-api payload tuning)
@@ -39,6 +41,5 @@ Not implemented yet:
 - GitHub API integration
 - Chrome Tab Groups auto-restore across browser restart
 - authentication
-- real MCP transport
 - AI conductor beyond the loop skeleton
 - Actions/deploy state detection
