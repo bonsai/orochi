@@ -1,11 +1,11 @@
 {
   "name": "orochi",
   "version": "0.1.0",
-  "exports": "./src/mod.ts",
+  "exports": "./deno/mod.ts",
   "tasks": {
-    "dev": "deno run --allow-net --allow-env src/api.ts",
-    "cli": "deno run src/cli.ts",
-    "check": "deno check src/*.ts",
+    "dev": "deno run --allow-net --allow-env deno/api.ts",
+    "cli": "deno run deno/cli.ts",
+    "check": "deno check deno/*.ts deno/core/*.ts",
     "test": "deno test"
   },
   "imports": {}
