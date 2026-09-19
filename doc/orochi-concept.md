@@ -1,7 +1,52 @@
 # Orochi — 再定義
 
 ## 一言
-**Orochiは、サイドバーからプロンプトで8つのWeb Tabを指揮し、各TabのDOMとWeb APIを融通してProjectを動かすChrome Extensionである。**
+**Orochiは、tmux / herdr / takt / aw を「ブラウザ = Project Context」で統合した存在である。
+並列セッション（tmux・herdr）×エージェントオーケストレーション（takt）×ゴール実行（aw）を
+1つのProjectに対する8つの作業面（8 Tabs）として束ね、ゴールの型を完成させる。**
+
+## 何を統合しているのか
+
+| 道具の系譜 | 能力 | Orochi での受け持ち |
+|---|---|---|
+| tmux / herdr | 複数セッションの並列・永続・ワークスペース整理 | **8 Session 並列**。CRX の Tab Group / CLI の Session / runtime のスロット |
+| takt | エージェントを計画→実装→レビュー→修正で振る orchestration | **Conductor 層**。Prompt→Command→Plan→8 Tabs→DOM/API→結果→Sidebar |
+| aw | ゴールを1コマンドで最後まで通す自動化 | **ゴールの型の実行**。collect→operate→return の完成まで一本で通す |
+
+takt がターミナル上のエージェントを、tmux/herdr がその作業台を、aw がゴールまでの道を
+それぞれ担当するなら、Orochi はそのすべてを **1つのProjectのブラウザ文脈**に載せる。
+Sidebar / 8 Tabs / Tab Group / Session が「作業台」であり、「指揮」であり、「道」である。
+
+## ゴールの型
+
+Orochi が追うゴールは次の収束型（goal shape）を持つ。
+
+```text
+Project（canon）
+   ↓ resolve
+8つの頭を集める（collect）      ← aw 的: 一気に取り揃える
+   ↓ orchestration
+1つの操作面として動かす（operate） ← takt 的: AIがconductorで振る
+   ↓ publish / sync
+結果を can へ返し done にする（return） ← canon へ戻す
+```
+
+```ts
+type Goal = {
+  shape: "project-context";     // Orochi のゴールの型
+  target: Project;
+  heads: Head[];                // 揃えるべき作業面
+  status: "collecting" | "operating" | "publishing" | "done" | "blocked";
+  canonOk: boolean;             // GitHub へ結果が返ったか
+};
+```
+
+- 「途中で散っている」ものを1つの文脈（Session + Tab Group）へ収束させる
+- 完了 = 操作の結果が GitHub の項目（Issue/PR/Action/Deploy）として残り、Project が done に戻る
+- 並列しても1ゴール = 1プロジェクト、最大8セッション
+
+## Core Model
+Project → Orochi Sidebar → Prompt → Tab Orchestra → 8 Tabs → DOM / Web API
 
 ## Core Model
 Project → Orochi Sidebar → Prompt → Tab Orchestra → 8 Tabs → DOM / Web API
@@ -40,8 +85,11 @@ DOMだけに依存しない。可能な操作はWeb APIを直接叩き、DOMは�
 - DOM上の結果を次の操作へ渡す
 
 ## Browser Context
-**1 Project = 1 browser context**
-Projectは1ページではなく8 Tabsを含むブラウザ作業環境として扱う。
+**1 Session = 1 browser context**（最大8セッション並列）。
+Projectは1ページではなく8 Tabsを含むブラウザ作業環境として扱う。複数 Project を同時に
+Session として保持し、Tab Group ごとに作業面を分ける。
+
+→ 詳細: [multisession.md](multisession.md)
 
 ## Platform Layout
 実行プラットフォームはフォルダ名で明示する。
@@ -77,10 +125,11 @@ Chrome → Sidebar → Project指定 → 8 Tabs生成 → Prompt → 対象Tab�
 - CRXにcredentialを保存しない
 
 ## 原則
-> **Orochi = Browser Project Orchestra**
+> **Orochi = tmux/herdr×takt×aw を統合した Browser Project Orchestra**
 > **Sidebar = 指揮席**
 > **8 Tabs = 8つの作業面**
 > **DOM + Web API = 操作面**
 > **Prompt = 指示**
 > **AI = Conductor**
+> **Goal = Project の収束（collect → operate → return）**
 > **GitHub = Canon**

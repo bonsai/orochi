@@ -6,6 +6,18 @@
 
 Orochi connects the resources of one project and presents them as one operational context.
 
+Orochi is the browser-projected integration of the terminal/agent/pipeline tools the
+developer already uses:
+
+| tool family | what Orochi takes from it |
+|---|---|
+| tmux / herdr | parallel, persistent session & workspace management (up to 8 sessions) |
+| takt | agent orchestration (plan → implement → review → fix) |
+| aw | goal-shaped pipelines that run to completion from one command |
+
+CLI / CRX / MCP expose the same Core, so the session, orchestration and goal layers are
+usable from the terminal (tmux·herdr) as well as the browser (CRX).
+
 ## Problem
 
 A project is distributed across:
@@ -28,6 +40,29 @@ People repeatedly search, open, and organize these resources manually.
 Orochi resolves a project from the current context and orchestrates its resources.
 
 GitHub remains the canon. Orochi is the orchestra.
+
+## Goal shape
+
+Orochi pursues one goal shape (**ゴールの型**):
+
+```text
+collect   combine the 8 heads of a project into one operational context
+operate   act on them through DOM + Web API, conductor = AI
+return    land results back on GitHub (Issue / PR / Action / Deploy) → done
+```
+
+```ts
+type Goal = {
+  shape: "project-context";
+  project: Project;
+  heads: Head[];
+  status: "collecting" | "operating" | "publishing" | "done" | "blocked";
+  canonOk: boolean;
+};
+```
+
+Completion means the project's context converged (up to 8 parallel sessions) and the
+result is recorded in the canon, not that a chat conversation finished.
 
 ## Users
 
@@ -96,4 +131,6 @@ The POC is complete when:
 - CLI can resolve the same Project
 - API can resolve the same Project
 - MCP can invoke the same Core operation
+- a Goal advances to `done` (result recorded on GitHub) from CRX, CLI, or MCP
+- up to 8 sessions run in parallel and share the same runtime
 - no credentials are stored in the extension

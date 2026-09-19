@@ -2,7 +2,11 @@
 
 **AI Project Orchestra for the Browser**
 
-Orochi connects the browser, GitHub, AI agents, and project state around one canonical project.
+Orochi integrates the qualities of tmux/herdr (parallel sessions), takt (agent
+orchestration) and aw (goal-shaped automation) into one **Project Context** in the
+browser. Up to 8 sessions run in parallel across CLI, CRX and MCP on the same runtime.
+
+> **Eight heads. One project state. One goal shape: collect → operate → return.**
 
 ## Idea
 
@@ -19,9 +23,10 @@ It is a working context containing:
 - data and dashboards
 - other project resources
 
-Orochi turns that context into a browser **Tab Group** and lets humans and agents operate on the same project.
+Orochi turns that context into browser **Tab Groups** (one per session, up to 8 parallel)
+and lets humans and agents operate on the same project.
 
-> **Eight heads. One project state.**
+> **Eight heads. One project state. One goal shape: collect → operate → return.**
 
 ## Architecture
 

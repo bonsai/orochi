@@ -4,7 +4,19 @@ OrochiはSidebarからPrompt / Voice / Smartphone入力で8つのBrowser Tabを�
 
 ## 基本単位
 
-**1 Project = 1 browser context**。Sidebarは9番目のTabではなくCommand Center / 指揮席。
+**1 Session = 1 browser context**。進化形は **最大8セッションの並列**。Sidebar は9番目の Tab ではなく Command Center / 指揮席。
+
+### マルチセッション（8並列）
+
+Session は Core が保持する Project の作業文脈（`s1`〜`s8` の8スロット上限）。
+
+- **local runtime が唯一の8スロット所有者**
+- CLI / CRX / MCP / SDK は全て API クライアント（gh 方式）。どの界面からでも同じ Session を操作
+- 1 Session = 1 Tab Group（CLI-only セッションは Tab Group 不要）
+- 8満杯時: open はエラー + active 一覧
+- runtime 再起動時は JSON スナップショット（`$HOME/.orochi/sessions.json`）から復元
+
+詳細 → [multisession.md](multisession.md)
 
 ## Input
 

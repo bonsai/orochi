@@ -22,10 +22,17 @@ Implemented skeleton:
 - MCP boundary
 - CRX boundary
 
+Implemented:
+- Session store (max 8 slots, `session open/ls/close/focus`)
+- JSON snapshot restore (`$HOME/.orochi/sessions.json`)
+- CLI as local runtime client (shared sessions)
+- MCP session tools (API-backed)
+- CRX Tab Group creation/update per session + popup session list
+
 Not implemented yet:
-- persistent state
+- persistent state beyond snapshot
 - GitHub API integration
-- Chrome Tab Groups API
+- Chrome Tab Groups auto-restore across browser restart
 - authentication
 - real MCP transport
 - AI conductor

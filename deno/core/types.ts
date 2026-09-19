@@ -21,3 +21,36 @@ export type Action =
   | { type: "resolve"; url: string }
   | { type: "open"; project: string }
   | { type: "group"; project: string; resourceUrls: string[] };
+
+export type SessionId = string;
+
+export type SessionStatus = "active" | "idle";
+
+export type Session = {
+  id: SessionId;
+  project: Project;
+  status: SessionStatus;
+  tabGroupId?: number;
+  createdAt: number;
+  lastActiveAt: number;
+};
+
+export type SessionSnapshot = {
+  version: 1;
+  sessions: Session[];
+};
+
+export type GoalStatus =
+  | "collecting"
+  | "operating"
+  | "publishing"
+  | "done"
+  | "blocked";
+
+export type Goal = {
+  shape: "project-context";
+  project: Project;
+  heads: Head[];
+  status: GoalStatus;
+  canonOk: boolean;
+};

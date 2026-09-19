@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Orochi</title>
+  <style>
+    body { width: 360px; margin: 0; padding: 10px; font: 13px/1.5 system-ui; }
+    h1 { font-size: 14px; margin: 0 0 8px; }
+    .row { display: flex; gap: 6px; }
+    input { flex: 1; padding: 4px 6px; }
+    button { padding: 4px 8px; }
+    ul { list-style: none; padding: 0; margin: 10px 0 0; }
+    li { display: flex; align-items: center; gap: 6px; padding: 6px 0; border-top: 1px solid #eee; }
+    li .repo { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #status { color: #777; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Orochi Sessions</h1>
+  <p id="status">Checking local Orochi...</p>
+  <div class="row">
+    <input id="url" placeholder="https://github.com/owner/repo">
+    <button id="open">Open</button>
+  </div>
+  <ul id="sessions"></ul>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

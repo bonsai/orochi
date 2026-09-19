@@ -18,6 +18,8 @@ The percentage of projects for which Orochi can resolve the current project and 
 | Resource Open Rate | Resolved resources successfully opened | ≥ 95% |
 | Tab Group Success Rate | Project resources grouped correctly | ≥ 95% |
 | Cross-interface Consistency | CRX / CLI / API / MCP return equivalent Project State | 100% |
+| Concurrent Sessions | Sessions held per runtime (shared across interfaces) | ≤ 8 |
+| Snapshot Restore | Sessions recovered after runtime restart | 100% |
 | Time to Context | Time from active project URL to usable project context | < 10 sec |
 | Secret Exposure | Credentials stored in CRX | 0 |
 | POC Completion | MVP flow works end-to-end | 100% |

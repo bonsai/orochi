@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "exports": "./deno/mod.ts",
   "tasks": {
-    "dev": "deno run --allow-net --allow-env deno/api.ts",
-    "cli": "deno run deno/cli.ts",
+    "dev": "deno run --allow-net --allow-env --allow-read --allow-write deno/api.ts",
+    "cli": "deno run --allow-net --allow-env deno/cli.ts",
     "check": "deno check deno/*.ts deno/core/*.ts",
     "test": "deno test"
   },

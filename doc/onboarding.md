@@ -59,7 +59,14 @@ Project / Resource / State / Actionを共通モデルとして持つ。CRX、CLI
 ### CLI
 ~~~bash
 deno run deno/cli.ts resolve https://github.com/bonsai/orochi
+deno run deno/cli.ts session open https://github.com/bonsai/orochi
+deno run deno/cli.ts session ls
+deno run deno/cli.ts session close s1
 ~~~
+
+CLI は local runtime のクライアント。セッションは runtime が最大8個保持し、
+CLI / CRX / MCP から同じセッションを操作できる。状態は
+`$HOME/.orochi/sessions.json` に保存され、runtime 再起動後も復元される。
 
 ### API
 ~~~bash
