@@ -98,6 +98,51 @@ When changing the implementation:
 5. Prefer structured results over log-message parsing.
 6. Keep the manual acceptance path documented in `gap.md` and the refresh roadmap.
 
+## Parallel planning
+
+When the user gives more than one Suno or Orochi task, do not execute the list as an unstructured batch. First act as a planner and convert the request into a small task DAG.
+
+Each task must state its `id`, `goal`, `lane`, `dependsOn`, `paths`, `exclusive` resources, `outputs`, and `doneWhen` conditions. Put tasks with no dependency into the same wave only when their paths and exclusive resources do not overlap.
+
+Use these lanes:
+
+- `crx`: content script, background, and DOM adapter work.
+- `runtime`: Deno API, Session, Run, snapshot, and validation work.
+- `test`: fixtures, integration tests, and acceptance evidence.
+- `review`: conflict, security, and completion checks.
+- `integrator`: connect the CRX and runtime outputs after a barrier.
+
+The first Suno wave should normally look like this:
+
+```text
+Wave 0: validate runtime/CLI/MCP boundaries
+    ↓
+Wave 1: tab binding + auth state + readiness + run types + test fixtures
+    ↓
+Wave 2: submit + polling + result extraction + diagnostics
+    ↓
+Wave 3: run API + event persistence + CRX reporting + MCP status
+    ↓
+Wave 4: one-profile manual acceptance and review
+```
+
+Code work may be parallelized across disjoint files, but browser work is serialized per Session. Never run two Generate operations in the same Suno Session. Treat the Session, Tab Group, snapshot writer, and shared source file as exclusive resources. The initial worker cap is three, even though the runtime supports up to eight logical Sessions.
+
+At each barrier, verify tests, artifacts, and unresolved dependencies before dispatching the next wave. If one task is `auth-required`, `selector-failed`, or `blocked`, do not silently retry dependent tasks. Return the dependency and the one concrete action needed to unblock it.
+
+For a planned run, report:
+
+```text
+Goal: <goal>
+Plan: <task count> tasks / <wave count> waves
+Completed: <task ids>
+Running: <task ids>
+Blocked: <task ids and dependency>
+Failed: <task ids and reason>
+Evidence: <tests, logs, clip URL/ID>
+Next: <one concrete action>
+```
+
 ## Completion report
 
 Report the result in this form:

@@ -48,6 +48,20 @@
 - 複数 head の orchestration を追加する。
 - 書き込み操作は read-only adapter の安定後に別 milestone とする。
 
+## Milestone P0: 並列実行の基盤
+
+Suno single-run の安定化と並行して、実装作業を分割して進めるための最小 scheduler を追加する。ただし、同じ Suno Session のブラウザ操作は並列化せず、1 Session 1 active run とする。
+
+- `Task`、`Wave`、`Barrier`、`TaskResult` の型を追加する。
+- Goal から Task DAG を作り、`dependsOn` のない Task を ready にする。
+- `paths` と `exclusive` による競合検出を追加する。
+- 初期 Worker 数を3レーンに制限する。
+- CRX 操作へ session mutex と idempotency key を追加する。
+- Wave 終了時にテスト、成果物、レビューを検証する。
+- CLI/MCP から plan、dispatch、status を参照できるようにする。
+
+詳細な実行モデルと Suno 優先の Wave 計画は [parallel-orchestration.md](parallel-orchestration.md) に定義する。
+
 ## Definition of Done
 
 各 Issue は、コード変更だけでなく、少なくとも一つの自動テストまたは再現可能な実機確認手順を含む場合に完了とする。Suno CRX の P0 Issue は、ログイン済み・未ログイン・timeout・タブ消失の各経路を区別できることを完了条件にする。
@@ -76,6 +90,13 @@ GitHub Issue は依存関係が分かるよう、次の順で作成する。
 18. S3-03 selector diagnostics
 19. S4-01 GitHub read-only adapter
 20. S4-02 ChatGPT single-turn hardening
+21. P0-01 Task/Wave/Barrier 型
+22. P0-02 DAG の ready 判定と依存解消
+23. P0-03 path/session/resource lock
+24. P0-04 Suno session mutex と idempotency key
+25. P0-05 Wave barrier と結果統合
+26. P0-06 plan/dispatch/status API と MCP
+27. P0-07 OpenCode parallel planning skill
 
 ## References
 

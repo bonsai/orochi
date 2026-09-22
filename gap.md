@@ -51,6 +51,12 @@ ChatGPT の自律ループ、GitHub の書き込み操作、8 heads の完全実
 | G12 | 実機確認が手動メモのみ | Chrome profile、前提条件、確認項目を固定する | P0 |
 | G13 | GitHub 操作委譲が未実装 | Suno 完成後に read-only adapter を追加する | P2 |
 | G14 | 自律 loop が未実装 | まず単一 Goal の状態機械として導入する | P1 |
+| G15 | タスク分割の単位がない | Goal を Task DAG と Wave に分解する | P1 |
+| G16 | 依存関係と成果物の受け渡しが暗黙的 | `dependsOn`、`outputs`、`doneWhen` を Task 契約にする | P1 |
+| G17 | 並列実行時の競合制御がない | path、Session、Tab Group、snapshot を排他資源として扱う | P0 |
+| G18 | Suno 同一タブを並列操作できてしまう | 1 Session 1 active run と idempotency key を導入する | P0 |
+| G19 | Wave の完了条件がない | Barrier でテスト、成果物、レビューを検証する | P1 |
+| G20 | OpenCode に計画・分割手順がない | planner / worker / integrator の実行手順を skill にする | P1 |
 
 ## 刷新後の境界
 
@@ -65,6 +71,12 @@ Deno runtime は、Session、Run、Result、command queue を所有する。CRX 
 ### OpenCode skill の責務
 
 OpenCode skill は、実行手順、前提条件、検証項目、失敗時の切り分けを定義する。skill は薄いオーケストレーターとし、DOM セレクタや Chrome API を重複実装しない。
+
+### Parallel orchestration の責務
+
+並列オーケストレーションは、Goal を Task DAG に分解し、依存のない Task を Wave 単位で dispatch する。コード作業はファイル境界が分かれていれば並列に進められるが、同じ Suno Session の DOM 操作は直列化する。Deno runtime が Task、Run、Result、Barrier の single writer になり、CRX は割り当てられた browser operation の実行面になる。
+
+詳細な Task 契約、Lane、Wave、排他資源、Suno 優先の実行順は [parallel-orchestration.md](parallel-orchestration.md) に定義する。
 
 ## Suno Run の状態機械
 
@@ -104,6 +116,10 @@ opening / auth-check / submitting / generating
 ### Phase 0: 接続面の修復
 
 MCP の JSON-RPC 引数マッピング、CLI の `resolve`、engine enum、BrowserOp の入力検証を先に直す。これにより、後続の Suno 実装をどの入口から実行しても同じ結果にできる。
+
+### Phase 0.5: 並列実行の基盤
+
+Goal を Task DAG に変換し、Wave ごとに ready Task を dispatch する型と runtime 内 scheduler を追加する。初期の並列数は3レーンに制限し、同一 Session の Suno DOM、同一ファイル、snapshot writer は排他制御する。詳細は [parallel-orchestration.md](parallel-orchestration.md) を参照する。
 
 ### Phase 1: Suno の単発生成
 
