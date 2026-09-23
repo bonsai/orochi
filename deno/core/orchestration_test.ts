@@ -1,9 +1,11 @@
-import { assertEquals } from "jsr:@std/assert";
+import { assertEquals, assertRejects } from "jsr:@std/assert";
 import {
   blockedTasks,
   dependencyState,
   readyTasks,
+  ResourceLockManager,
   validateTaskPlan,
+  withTaskLocks,
   type TaskPlan,
 } from "./orchestration.ts";
 
@@ -118,4 +120,62 @@ Deno.test("blocked dependency propagates", () => {
   assertEquals(readyTasks(plan, results), []);
   assertEquals(blockedTasks(plan, results), ["b"]);
   assertEquals(dependencyState(plan.tasks[1], results), "blocked");
+});
+
+Deno.test("overlapping paths are rejected in one wave", () => {
+  const plan: TaskPlan = {
+    tasks: [
+      { ...task("a"), paths: ["src/core"] },
+      { ...task("b"), paths: ["src/core/store.ts"] },
+    ],
+    waves: [{ id: "w1", tasks: ["a", "b"] }],
+    barriers: [],
+  };
+
+  assertEquals(validateTaskPlan(plan), [
+    "path conflict in wave w1: a <-> b",
+  ]);
+});
+
+Deno.test("exclusive resources cannot be duplicated in one wave", () => {
+  const plan: TaskPlan = {
+    tasks: [
+      { ...task("a"), exclusive: ["session:s1"] },
+      { ...task("b"), exclusive: ["session:s1"] },
+    ],
+    waves: [{ id: "w1", tasks: ["a", "b"] }],
+    barriers: [],
+  };
+
+  assertEquals(validateTaskPlan(plan), [
+    "exclusive resource conflict in wave w1: a <-> b -> session:s1",
+  ]);
+});
+
+Deno.test("resource lock rejects double acquisition and releases", () => {
+  const locks = new ResourceLockManager();
+
+  assertEquals(locks.acquire("a", ["session:s1"]), true);
+  assertEquals(locks.acquire("b", ["session:s1"]), false);
+  assertEquals(locks.owner("session:s1"), "a");
+  assertEquals(locks.release("a", ["session:s1"]), true);
+  assertEquals(locks.isLocked("session:s1"), false);
+});
+
+Deno.test("snapshot writer is released after failure", async () => {
+  const locks = new ResourceLockManager();
+  const a = { ...task("a"), exclusive: ["session:s1"] };
+  const b = { ...task("b"), exclusive: ["session:s2"] };
+
+  await assertRejects(
+    () => withTaskLocks(locks, a, () => {
+      throw new Error("task failed");
+    }),
+    Error,
+    "task failed",
+  );
+
+  assertEquals(locks.isLocked("snapshot-writer"), false);
+  assertEquals(await withTaskLocks(locks, b, () => "ok"), "ok");
+  assertEquals(locks.isLocked("snapshot-writer"), false);
 });
