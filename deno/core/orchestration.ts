@@ -113,8 +113,8 @@ export function validateTaskPlan(plan: TaskPlan): string[] {
 }
 
 function pathsOverlap(a: string, b: string): boolean {
-  const left = a.replace(/\\/g, "/").replace(//+$/, "");
-  const right = b.replace(/\\/g, "/").replace(//+$/, "");
+  const left = a.replace(/\\/g, "/").replace(/\/+$/, "");
+  const right = b.replace(/\\/g, "/").replace(/\/+$/, "");
   return left === right || left.startsWith(right + "/") || right.startsWith(left + "/");
 }
 
