@@ -1,5 +1,7 @@
 import type { Session, SessionId, SessionSnapshot, EngineId } from "./types.ts";
 import { resolveProject } from "./project.ts";
+import type { TaskPlan, TaskResult, TaskId, TaskResultStatus } from "./orchestration.ts";
+import { validateTaskPlan, readyTasks } from "./orchestration.ts";
 
 export const SESSION_CAP = 8;
 
@@ -10,6 +12,8 @@ export function defaultSessionPath(): string {
 
 export class SessionStore {
   #sessions = new Map<SessionId, Session>();
+  #plan?: TaskPlan;
+  #taskResults = new Map<TaskId, TaskResult>();
 
   constructor(public readonly path: string) {}
 
@@ -88,6 +92,37 @@ export class SessionStore {
     session.lastActiveAt = Date.now();
     this.save();
     return session;
+  }
+
+  setPlan(plan: TaskPlan): { ok: boolean; errors?: string[] } {
+    const errors = validateTaskPlan(plan);
+    if (errors.length > 0) {
+      return { ok: false, errors };
+    }
+    this.#plan = plan;
+    this.#taskResults.clear();
+    return { ok: true };
+  }
+
+  getPlan(): TaskPlan | undefined {
+    return this.#plan;
+  }
+
+  recordTaskResult(result: TaskResult): void {
+    this.#taskResults.set(result.taskId, result);
+  }
+
+  getTaskResult(taskId: TaskId): TaskResult | undefined {
+    return this.#taskResults.get(taskId);
+  }
+
+  getReadyTasks(): TaskId[] {
+    if (!this.#plan) return [];
+    const statuses = new Map<TaskId, TaskResultStatus>();
+    for (const [id, res] of this.#taskResults.entries()) {
+      statuses.set(id, res.status);
+    }
+    return readyTasks(this.#plan, statuses);
   }
 
   #nextSlot(): SessionId {

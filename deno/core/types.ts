@@ -64,3 +64,36 @@ export type BrowserOp =
   | { kind: "focus"; sessionId: string }
   | { kind: "close"; sessionId: string }
   | { kind: "loop"; sessionId: string; prompt: string; engine?: EngineId };
+
+export type RunId = string;
+
+export type RunStatus =
+  | "created"
+  | "opening"
+  | "auth-check"
+  | "submitting"
+  | "generating"
+  | "completed"
+  | "blocked"
+  | "failed"
+  | "cancelled";
+
+export type RunEvent = {
+  timestamp: number;
+  status: RunStatus;
+  detail?: string;
+  error?: string;
+};
+
+export type SunoRun = {
+  id: RunId;
+  sessionId: SessionId;
+  prompt: string;
+  idempotencyKey?: string;
+  status: RunStatus;
+  clipId?: string;
+  clipUrl?: string;
+  events: RunEvent[];
+  createdAt: number;
+  updatedAt: number;
+};
