@@ -108,7 +108,115 @@ export function validateTaskPlan(plan: TaskPlan): string[] {
     }
   }
 
+  errors.push(...validateWaveLocks(plan));
   return errors;
+}
+
+function pathsOverlap(a: string, b: string): boolean {
+  const left = a.replace(/\\/g, "/").replace(//+$/, "");
+  const right = b.replace(/\\/g, "/").replace(//+$/, "");
+  return left === right || left.startsWith(right + "/") || right.startsWith(left + "/");
+}
+
+export function taskResources(task: Task): string[] {
+  return [
+    ...task.paths.map((path) => `path:${path}`),
+    ...task.exclusive.map((resource) => `exclusive:${resource}`),
+  ];
+}
+
+export function validateWaveLocks(plan: TaskPlan): string[] {
+  const errors: string[] = [];
+  const byId = new Map(plan.tasks.map((task) => [task.id, task]));
+
+  for (const wave of plan.waves) {
+    const tasks = wave.tasks
+      .map((id) => byId.get(id))
+      .filter((task): task is Task => task !== undefined);
+
+    for (let i = 0; i < tasks.length; i++) {
+      for (let j = i + 1; j < tasks.length; j++) {
+        const left = tasks[i];
+        const right = tasks[j];
+
+        for (const a of left.paths) {
+          for (const b of right.paths) {
+            if (pathsOverlap(a, b)) {
+              errors.push(`path conflict in wave ${wave.id}: ${left.id} <-> ${right.id}`);
+            }
+          }
+        }
+
+        const resources = new Set(left.exclusive);
+        for (const resource of right.exclusive) {
+          if (resources.has(resource)) {
+            errors.push(
+              `exclusive resource conflict in wave ${wave.id}: ${left.id} <-> ${right.id} -> ${resource}`,
+            );
+          }
+        }
+      }
+    }
+  }
+
+  return errors;
+}
+
+export class ResourceLockManager {
+  #owners = new Map<string, TaskId>();
+
+  acquire(taskId: TaskId, resources: readonly string[]): boolean {
+    const unique = [...new Set(resources)];
+    for (const resource of unique) {
+      const owner = this.#owners.get(resource);
+      if (owner !== undefined && owner !== taskId) return false;
+    }
+    for (const resource of unique) this.#owners.set(resource, taskId);
+    return true;
+  }
+
+  release(taskId: TaskId, resources: readonly string[]): boolean {
+    let released = true;
+    for (const resource of new Set(resources)) {
+      if (this.#owners.get(resource) === taskId) {
+        this.#owners.delete(resource);
+      } else {
+        released = false;
+      }
+    }
+    return released;
+  }
+
+  isLocked(resource: string): boolean {
+    return this.#owners.has(resource);
+  }
+
+  owner(resource: string): TaskId | undefined {
+    return this.#owners.get(resource);
+  }
+}
+
+export function snapshotWriterResource(): string {
+  return "snapshot-writer";
+}
+
+export async function withTaskLocks<T>(
+  locks: ResourceLockManager,
+  task: Task,
+  fn: () => Promise<T> | T,
+): Promise<T> {
+  const resources = [...taskResources(task), snapshotWriterResource()];
+  if (!locks.acquire(task.id, resources)) {
+    throw new Error(`resource lock unavailable: ${task.id}`);
+  }
+
+  try {
+    return await fn();
+  } finally {
+    if (!locks.release(task.id, resources)) {
+      throw new Error(`resource lock release failed: ${task.id}`);
+    }
+  }
 }
 
 export function dependencyState(
