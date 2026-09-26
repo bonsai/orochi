@@ -23,6 +23,14 @@ export async function handleApiRequest(
     }
 
     // Diagnostic: test token retrieval
+    // GET /api/captcha_probe — ask the page to mint a Turnstile token (diagnostic)
+    if (method === 'GET' && path === '/api/captcha_probe') {
+      if (!wsManager.isConnected) return json({ error: 'No extension connected' }, 503);
+      const resp = await wsManager.sendRequest('probe_captcha', { url: '', method: 'GET' }, 45_000);
+      if (resp.error) return json({ error: resp.error.message }, 500);
+      return json(resp.result!.data);
+    }
+
     if (path === '/api/test') {
       if (!wsManager.isConnected) {
         return json({ error: 'No extension connected' }, 503);
@@ -167,11 +175,12 @@ async function checkCaptcha(wsManager: WebSocketManager): Promise<boolean> {
 
 /** Get a captcha token from the page script's hCaptcha */
 async function getCaptchaToken(wsManager: WebSocketManager): Promise<string | null> {
+  // Use the same path as /api/captcha_probe (proven to mint a Turnstile token).
   try {
-    const resp = await wsManager.sendRequest('get_captcha', {
+    const resp = await wsManager.sendRequest('probe_captcha', {
       url: '', method: 'GET',
-    }, 15_000);
-    return resp.result?.data?.captchaToken || null;
+    }, 45_000);
+    return resp.result?.data?.token || null;
   } catch {
     return null;
   }
@@ -199,7 +208,7 @@ async function proxyGenerate(
   }
 
   const resp = await wsManager.sendRequest('api_call', {
-    url: '/api/generate/v2/',
+    url: '/api/generate/v2-web/',
     method: 'POST',
     body: payload,
   });

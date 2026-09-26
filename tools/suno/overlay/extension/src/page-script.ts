@@ -91,8 +91,8 @@ async function turnstileToken(): Promise<string | null> {
     const uid = 'orochi-ts-' + Math.random().toString(36).slice(2);
     const el = document.createElement('div');
     el.id = uid;
-    // Turnstile needs a laid-out container; display:none breaks render/execute.
-    el.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:300px;height:65px;';
+    // Turnstile needs a visible, laid-out container; display:none / off-screen breaks it.
+    el.style.cssText = 'position:fixed;left:8px;bottom:8px;width:300px;height:65px;z-index:2147483647;background:#fff;';
     document.body.appendChild(el);
     let done = false;
     let widgetId: string | undefined;
@@ -172,6 +172,18 @@ window.addEventListener('message', async (event) => {
       response = { id, result: { status: 200, data: { captchaToken } } };
     } catch (err: any) {
       response = { id, error: { code: -1, message: err.message } };
+    }
+  } else if (method === 'probe_captcha') {
+    try {
+      const ts = await loadTurnstile();
+      if (!ts) {
+        response = { id, result: { status: 200, data: { turnstile: false } } };
+      } else {
+        const token = await turnstileToken();
+        response = { id, result: { status: 200, data: { turnstile: true, token: token ?? null } } };
+      }
+    } catch (err: any) {
+      response = { id, error: { code: -1, message: err?.message ?? String(err) } };
     }
   } else if (method === 'get_status') {
     const clerk = (window as any).Clerk;

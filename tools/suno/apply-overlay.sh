@@ -11,6 +11,7 @@ SRC="$(cd "$(dirname "$0")" && pwd)/overlay"
 
 for f in \
   extension/src/page-script.ts \
+  extension/src/content.ts \
   extension/build.ts \
   src/bridge/api-handler.ts \
   src/bridge/server.ts

@@ -62,10 +62,26 @@ tools/suno/suno-gen.sh "warm lofi piano with rain, calm night" "lofi, rain, calm
 5. **拡張の版番号自動バンプ**（`extension/build.ts`）
    `bun run ext:build` のたび patch を +1（Chrome の更新検知を確実にする）。
 
-## 既知の未解決
+## 診断用エンドポイント
 
-- 生成 `422 token_validation_failed` が出る場合は captcha トークン未取得。
-  suno.com タブのコンソールで `[Suno Bridge] Turnstile` 行を確認する。
-- bridge 再起動後は、拡張の再読込だけでなく **suno.com タブの完全リロード**が必要
-  （`Extension context invalidated` はこれ）。
-- `--remote-debugging-port` を使う CDP 方式は未採用（現行方針は拡張 bridge）。
+```bash
+curl -sS http://localhost:3001/api/captcha_probe   # Turnstile トークン取得を単体実行
+curl -sS http://localhost:3001/api/captcha_check   # {required, captcha_version}
+curl -sS http://localhost:3001/api/test            # JWT(__session Cookie) 取得確認
+curl -sS http://localhost:3001/api/status          # 拡張接続状態
+```
+
+## 既知の未解決（2026-09-26 時点）
+
+**生成はまだ通っていない。** `POST /api/generate/v2-web/` に Turnstile トークンを付けても
+`422 token_validation_failed` が返る。
+
+- `captcha_probe` は文字列を返すが、Cloudflare の Turnstile フレームが
+  `challenges.cloudflare.com/.../0x4AAAAAADI7xDNyj-3LcIbi/...` で `NaN` エラーを連発しており、
+  返っているのは**検証に失敗したダミートークンの可能性が高い**（ページ内可視コンテナに変えても同じ）。
+- 生成エンドポイントは Suno 本体の定数で `/api/generate/v2-web/`（旧 `/api/generate/v2/` ではない）。
+  それでも 422 なので、原因は captcha 側と見ている。
+- 未検証の次手: 自前トークンをやめ、**Suno 自身の create UI を操作**（prompt 入力 → Create）して
+  Suno の captcha フローを走らせ、feed から clip を拾う。または CDP(Playwright) で UI を駆動。
+- bridge 再起動・拡張更新の後は **suno.com タブの完全リロード**が必須（`Extension context invalidated`）。
+- `[Suno Bridge]` 行のコンソール取得は貼り付けで改行が混入しやすい。上の診断エンドポイントを使う。
