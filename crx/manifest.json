@@ -13,7 +13,9 @@
     "http://127.0.0.1:8787/*",
     "http://localhost:8787/*",
     "https://github.com/*",
-    "https://chatgpt.com/*"
+    "https://chatgpt.com/*",
+    "https://suno.com/*",
+    "https://www.suno.com/*"
   ],
   "background": {
     "service_worker": "background.js",

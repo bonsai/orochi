@@ -52,6 +52,7 @@ function usage(): never {
   orochi browser focus <id>
   orochi browser close <id>
   orochi loop run <id> <prompt>       # engine で Goal 1件を処理（chatgpt/suno）
+  orochi suno gen auto <id>           # CRX POC: ダミーpromptを挿入（生成しない）
   orochi debug logs                   # CRX が runtime へ報告した実行ログ
 
   --port <n>   override runtime port`);
@@ -115,6 +116,18 @@ switch (`${command} ${sub ?? ""}`) {
     const prompt = rest.join(" ");
     if (!prompt) usage();
     const op: Record<string, unknown> = { kind: "loop", sessionId: value, prompt };
+    console.log(JSON.stringify(await call("/browser/commands", "POST", { op })));
+    break;
+  }
+  case "suno gen": {
+    if (value !== "auto") usage();
+    const sessionId = positional[3];
+    if (!sessionId) usage();
+    const op = {
+      kind: "suno-poc",
+      sessionId,
+      prompt: "Orochi CRX POC dummy prompt — do not generate"
+    };
     console.log(JSON.stringify(await call("/browser/commands", "POST", { op })));
     break;
   }
