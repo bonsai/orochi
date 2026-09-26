@@ -4,6 +4,7 @@
 
 ## 2026-09-26
 
+- Core の語彙/実データ型を追加: `deno/core/ontology.ts`（語彙）と `deno/core/topology.ts`（topology 生成・検証）、テスト、`deno/mod.ts` export、`doc/topology-ontology.md`（#55）
 - Suno CLI を orochi に吸収（`tools/suno/` = CLI + OpenSuno overlay + apply-overlay + README）→ PR #48
 - 現行 suno.com 対応の overlay: `__session` Cookie の JWT、Turnstile 自前 render、captcha DEBUG 解除、Bun idleTimeout、拡張版番号の自動バンプ
 - 生成の 422 を解消（`/api/generate/v2-web/` + web ヘッダ）。`Rain On Glass`（`c045685d-…`）が complete
