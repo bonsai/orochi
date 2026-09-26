@@ -17,6 +17,18 @@ orochi suno gen "calm rainy-night lofi"
 - 認証は **ログイン済みブラウザ** に委ねる。鍵・Cookie を repo やプロンプトに置かない。
 - 手段は **CRX（Chrome 拡張）による DOM 自動操作のみ**。CDP 越境はしない（ADR 系の既存方針）。
 
+## 実装方式（確定）
+
+自前の DOM 自動操作ではなく、**OpenSuno（paean-ai/opensuno, Chrome 拡張 + Bun bridge）を本体に使う**。
+CLI ラッパと Suno 現行仕様への当て込みは `tools/suno/` に置く。
+
+- 生成: `POST http://localhost:3001/api/custom_generate`（拡張が JWT と Turnstile を解決）
+- 取得: `GET /api/get?ids=...` → `clips[].audio_url`
+- DL/再生: `tools/suno/suno-gen.sh` → `$SUNO_OUT` → mpv
+
+上流の素のままでは現行 suno.com で壊れる点（Clerk 非公開 / Turnstile 常設 widget 無し /
+captcha スキップの DEBUG / Bun idleTimeout / 版番号）は `tools/suno/README.md` に列挙。
+
 ## なぜ CRX か（Tunova との対比）
 
 Tunova は自社サーバから Suno の内部 API を Cookie 付きで叩き、`POST /api/generate` → `GET /api/jobs/{id}` → `clips[].audio_url` を返す。同じ形を自前でやる方法は 2 つある。
