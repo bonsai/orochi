@@ -1,8 +1,7 @@
 ---
 name: suno-crx
-description: Run and diagnose one authenticated Suno generation through the Orochi Chrome extension, local runtime, CLI, or MCP.
+description: Install, test, and operate the Orochi Suno CRX prompt-injection POC on Windows. Use when setting up the extension, running `suno gen auto`, or diagnosing POC results.
 license: MIT
-compatibility: opencode
 metadata:
   project: bonsai/orochi
   priority: P0
@@ -13,7 +12,11 @@ metadata:
 
 ## Purpose
 
-Use this skill when the task requires operating Suno through Orochi's Chrome extension. The target is one observable run from prompt submission to a clip URL or a structured failure. Do not broaden the task into a ChatGPT loop, GitHub write operation, or multi-head orchestration unless the user explicitly asks for it.
+Use this skill when the task requires installing or operating Suno through Orochi's Chrome extension. The current POC only inserts the fixed dummy prompt below; it does not click Generate/Create, generate a song, download mp3, or start mpv.
+
+```text
+Orochi CRX POC dummy prompt — do not generate
+```
 
 ## Operating boundary
 
@@ -35,6 +38,19 @@ Before starting a run, check all of the following:
 
 If the profile is not logged in, stop with `auth-required`. Do not retry authentication indefinitely and do not ask the user to paste cookies or tokens.
 
+## Windows installation and tests
+
+Run these commands from the repository root in PowerShell:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+.\scripts\install-suno-crx-poc.ps1 -InstallDeno -RunTests
+```
+
+The script checks Deno, runs `deno task check`, and with `-RunTests` runs `deno task test`. It also verifies the CRX manifest path and prints the Chrome `Load unpacked` location. Use `-StartRuntime` to start the local runtime after checks.
+
+Load the repository's `crx` directory from `chrome://extensions` with **Developer mode → Load unpacked**. Reload the extension after code changes.
+
 ## Preferred workflow
 
 Use the CLI for a human-readable run. Use MCP only when the caller already has the Orochi MCP server configured.
@@ -49,14 +65,34 @@ curl -fsS http://127.0.0.1:8787/health
 # Open the Suno create page in the session's group.
  deno run --allow-net --allow-env deno/cli.ts browser open <session-id> https://suno.com/create
 
-# Run one prompt.
- deno run --allow-net --allow-env deno/cli.ts loop run <session-id> "<prompt>"
+# POC: insert the fixed dummy prompt; do not click Generate.
+ deno run --allow-net --allow-env deno/cli.ts suno gen auto <session-id>
+
+# Full generation path is not part of this POC.
+# deno run --allow-net --allow-env deno/cli.ts loop run <session-id> "<prompt>"
 
 # Inspect the CRX report.
  deno run --allow-net --allow-env deno/cli.ts debug logs
 ```
 
 When the repository's command wrapper is available, use `orochi` instead of the direct Deno command.
+
+The POC acceptance test requires:
+
+- `prompt-injected` in the debug log;
+- the fixed dummy prompt visible in Suno's prompt field;
+- no Generate/Create click and no song generation.
+
+Map failures as follows:
+
+| Outcome | Meaning | Next action |
+|---|---|---|
+| `auth-required` | Suno asks for login | Log in manually in the connected Chrome profile, then stop |
+| `selector-failed` | Prompt field is missing or not writable | Inspect the page and update `crx/suno-content.js` |
+| `content-script-unreachable` | CRX cannot reach the page script | Reload the extension and the Suno tab |
+| `no-response` | The content script did not respond | Reload once and rerun once |
+
+Do not paste cookies, tokens, or API keys. Do not retry a state-unknown operation until the Suno page has been checked.
 
 ## Expected run evidence
 

@@ -2,12 +2,17 @@ import { assertEquals, assertRejects } from "jsr:@std/assert";
 import {
   blockedTasks,
   dependencyState,
+  evaluateBarrier,
   readyTasks,
   ResourceLockManager,
+  SessionMutexManager,
   validateTaskPlan,
   withTaskLocks,
   type TaskPlan,
+  type TaskResult,
 } from "./orchestration.ts";
+import { LegacyCRXBrowserAdapter } from "./ports.ts";
+import { SessionStore } from "./store.ts";
 
 const task = (id: string) => ({
   id,
@@ -178,4 +183,99 @@ Deno.test("snapshot writer is released after failure", async () => {
   assertEquals(locks.isLocked("snapshot-writer"), false);
   assertEquals(await withTaskLocks(locks, b, () => "ok"), "ok");
   assertEquals(locks.isLocked("snapshot-writer"), false);
+});
+
+Deno.test("SessionMutexManager enforces single active run and tracks idempotency", () => {
+  const mutex = new SessionMutexManager();
+
+  assertEquals(mutex.tryAcquire("s1", "run-1"), true);
+  assertEquals(mutex.tryAcquire("s1", "run-2"), false);
+  assertEquals(mutex.getActiveRun("s1"), "run-1");
+
+  mutex.registerRun({
+    id: "run-1",
+    sessionId: "s1",
+    prompt: "make upbeat jazz track",
+    idempotencyKey: "key-123",
+    status: "generating",
+    events: [],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+
+  const run = mutex.getRunByIdempotencyKey("key-123");
+  assertEquals(run?.id, "run-1");
+  assertEquals(run?.prompt, "make upbeat jazz track");
+
+  assertEquals(mutex.release("s1", "run-1"), true);
+  assertEquals(mutex.getActiveRun("s1"), undefined);
+  assertEquals(mutex.tryAcquire("s1", "run-2"), true);
+});
+
+Deno.test("evaluateBarrier verifies wave completeness and evidence", () => {
+  const plan: TaskPlan = {
+    tasks: [task("a"), task("b")],
+    waves: [{ id: "w1", tasks: ["a", "b"] }],
+    barriers: [{
+      id: "b1",
+      waveId: "w1",
+      requiresTests: ["test-suite-1"],
+      requiresArtifacts: ["clip-url"],
+    }],
+  };
+
+  const resultsPartial = new Map<string, TaskResult>([
+    ["a", { taskId: "a", status: "completed", testEvidence: ["test-suite-1"] }],
+  ]);
+
+  const evalPartial = evaluateBarrier(plan, plan.barriers[0], resultsPartial);
+  assertEquals(evalPartial.satisfied, false);
+  assertEquals(evalPartial.pendingTasks, ["b"]);
+  assertEquals(evalPartial.missingArtifacts, ["clip-url"]);
+
+  const resultsComplete = new Map<string, TaskResult>([
+    ["a", { taskId: "a", status: "completed", testEvidence: ["test-suite-1"] }],
+    ["b", { taskId: "b", status: "completed", outputs: ["clip-url"] }],
+  ]);
+
+  const evalComplete = evaluateBarrier(plan, plan.barriers[0], resultsComplete);
+  assertEquals(evalComplete.satisfied, true);
+  assertEquals(evalComplete.missingTests, []);
+  assertEquals(evalComplete.missingArtifacts, []);
+});
+
+Deno.test("SessionStore setPlan and getReadyTasks lifecycle", () => {
+  const store = new SessionStore(":memory:");
+  const plan: TaskPlan = {
+    tasks: [task("a"), { ...task("b"), dependsOn: ["a"] }],
+    waves: [{ id: "w1", tasks: ["a"] }, { id: "w2", tasks: ["b"] }],
+    barriers: [],
+  };
+
+  const setRes = store.setPlan(plan);
+  assertEquals(setRes.ok, true);
+  assertEquals(store.getReadyTasks(), ["a"]);
+
+  store.recordTaskResult({ taskId: "a", status: "completed" });
+  assertEquals(store.getReadyTasks(), ["b"]);
+});
+
+Deno.test("LegacyCRXBrowserAdapter queues commands via BrowserPort", async () => {
+  const adapter = new LegacyCRXBrowserAdapter();
+  const dummySession = {
+    id: "s1",
+    project: { id: "p1", repo: "owner/repo", state: "working" as const, resources: [] },
+    engine: "suno" as const,
+    status: "active" as const,
+    createdAt: Date.now(),
+    lastActiveAt: Date.now(),
+  };
+
+  await adapter.openSession(dummySession, ["https://suno.com/create"]);
+  await adapter.groupSession(dummySession);
+
+  const cmds = adapter.pendingCommands;
+  assertEquals(cmds.length, 2);
+  assertEquals(cmds[0], { sessionId: "s1", action: "open", urls: ["https://suno.com/create"] });
+  assertEquals(cmds[1], { sessionId: "s1", action: "group" });
 });
