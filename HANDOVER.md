@@ -12,8 +12,8 @@ Orochi = ブラウザを実行基盤にした AI Project Orchestra。CRX / CLI /
 **Suno CLI（prompt → 生成 → mp3 → ローカル再生）を実装中。生成までは通った。DL が残ブロッカー。**
 
 - 方式: 自前 DOM 自動操作ではなく **OpenSuno**（Chrome 拡張 + Bun bridge）を本体に使う
-- 実体: `tools/suno/`（CLI ラッパ + OpenSuno への overlay + 手順）
-- 進捗の一次情報: **issue #40 の最新コメント**、`tools/suno/README.md`
+- 実体: `~/repo/suno-gen/bridge/`（overlay の正）。orochi は**起動と記録のみ**を持つ（疎結合）
+- 進捗の一次情報: **issue #40 の最新コメント**、`~/repo/suno-gen/bridge/README.md`
 
 | 段階 | 状態 |
 |---|---|
@@ -60,14 +60,14 @@ cd ~/orochi && opencode run "issue #NN を実装。受入条件は issue 本文�
 ## 再現・検証コマンド
 
 ```bash
-tools/suno/apply-overlay.sh /mnt/c/Users/dance/opensuno
+~/repo/suno-gen/bridge/apply-overlay.sh "${OPENSUNO_DIR:-/mnt/c/Users/dance/opensuno}"
 cd /mnt/c/Users/dance/opensuno && bun run ext:build      # 版番号は自動 +1
 # → 拡張は /api/__version を見て自動 reload、suno タブも自動リフレッシュ
 
 curl -sS localhost:3001/api/status          # 拡張接続
 curl -sS localhost:3001/api/captcha_probe   # Turnstile 単体
 curl -sS localhost:3001/api/__version       # ビルド版
-tools/suno/suno-gen.sh "warm lofi piano" "lofi" "Test"
+~/repo/suno-gen/scripts/apply_via_bridge.py prompts/<spec>.json --send
 ```
 
 ## つまずきどころ
@@ -86,6 +86,6 @@ repo の `AGENTS.md` と `.opencode/skills/` を読むため、これらだけ�
 ## 関連
 
 - `doc/suno-cli-mp3.md`（計画）
-- `tools/suno/README.md`（手順・overlay 内容）
+- `~/repo/suno-gen/bridge/README.md`（手順・overlay 内容）
 - `.opencode/skills/suno-crx/SKILL.md`（既存の Suno CRX 手順）
 - ADR: `~/wiki/projects/adr/`
