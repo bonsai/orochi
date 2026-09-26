@@ -30,6 +30,23 @@ Orochi = ブラウザを実行基盤にした AI Project Orchestra。CRX / CLI /
 2. #51 API 非依存の GUI 追従（見えている要素だけ操作、DL は UI 操作で）
 3. #50 tools/suno の正式経路化（OpenSuno の fork/submodule、CLI 統合）
 
+## 委譲（計画 = pi / 実装 = opencode）
+
+上の「次の手」は pi が計画し、**opencode に委譲して実装**する。pi は実装を持たず、検証と承認を行う。
+
+```bash
+cd ~/orochi && opencode run "issue #NN を実装。受入条件は issue 本文。完了したら PR"
+```
+
+未処理の branch 統合も同じ扱い（<https://github.com/bonsai/orochi/branches>）:
+
+| branch | 内容 | 状態 |
+|---|---|---|
+| `feat/manus-engine` (PR #42, draft) | `doc/manus-engine.md` のみ | 統合可 |
+| `feat/runtime-orchestration-ports-…` (PR #39) | orchestration/ports/store/types 改修（+402 行） | 統合前にテスト必須 |
+| `feat/suno-crx-poc-script` (PR #47) | `scripts/install-suno-crx-poc.ps1` | 統合可 |
+| `jules-read-issues-…` (PR #38) | main との差分なし | 閉じてよい |
+
 ## 環境（前提）
 
 - OpenSuno ツリー: `C:\Users\dance\opensuno`（git 管理外。変更は overlay として本 repo が持つ）

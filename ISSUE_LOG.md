@@ -12,3 +12,4 @@
 - mp3 DL が `Unauthorized` で未解決 → API 非依存の GUI 追従へ方針転換（#51）、実行基盤選定（#52）
 - issue 起票: #49（422/ DL）、#50（正式経路化）、#51（GUI 追従）、#52（実行基盤）。#40 に進捗を集約
 - HANDOVER.md / ISSUE_LOG.md を新設（opencode 等への引き継ぎ用）
+- 主従を明文化: **計画=pi / 実装=opencode**（`AGENTS.md`）。未処理 branch 統合の計画を #54 として起票し、opencode に委譲する形にした
