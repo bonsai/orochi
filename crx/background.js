@@ -1,6 +1,6 @@
 const API = "http://127.0.0.1:8787";
 
-import { runGoal } from "./loop.js";
+import { injectSunoPrompt, runGoal } from "./loop.js";
 
 async function api(path, opts = {}) {
   const res = await fetch(API + path, opts);
@@ -122,6 +122,14 @@ async function execBrowserOp(op) {
             ? "info"
             : "warn",
           `${op.sessionId} loop(${outcome.engine}) → ${outcome.status}${outcome.detail ? " — " + outcome.detail : ""}${outcome.text ? " — " + outcome.text.slice(0, 120) : ""}`
+        );
+        break;
+      }
+      case "suno-poc": {
+        const outcome = await injectSunoPrompt(session, op.prompt);
+        await logFromCrx(
+          outcome.ok ? "info" : "warn",
+          `${op.sessionId} suno-poc → ${outcome.status}${outcome.detail ? " — " + outcome.detail : ""}`
         );
         break;
       }

@@ -3,10 +3,23 @@
 // Best-effort selectors; reports exactly what it found so the loop can adapt.
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg?.op === "suno:inject-poc") {
+    sendResponse(injectPromptOnly(msg.prompt));
+    return false;
+  }
   if (msg?.op !== "suno:run") return;
   (async () => sendResponse(await runInPage(msg.prompt)))();
   return true; // async response keepalive
 });
+
+function injectPromptOnly(prompt) {
+  const signIn = authWall();
+  if (signIn) return { ok: false, status: "auth-required", detail: `auth wall: "${signIn}" — suno.com にログインが必要` };
+  const box = findPromptBox();
+  if (!box) return { ok: false, status: "selector-failed", detail: "prompt box not found" };
+  if (!setNativeValue(box, prompt)) return { ok: false, status: "selector-failed", detail: "prompt box is not writable" };
+  return { ok: true, status: "prompt-injected", detail: `${location.pathname} (generate button was not clicked)` };
+}
 
 function visibleText(el) {
   return (el.textContent ?? "").trim().toLowerCase();
@@ -49,8 +62,11 @@ function setNativeValue(el, value) {
     : HTMLElement.prototype;
   const setter = Object.getOwnPropertyDescriptor(proto, "value")?.set;
   if (setter) setter.call(el, value);
+  else if (el.isContentEditable) el.textContent = value;
+  else return false;
   el.dispatchEvent(new Event("input", { bubbles: true }));
   el.dispatchEvent(new Event("change", { bubbles: true }));
+  return true;
 }
 
 async function runInPage(prompt) {

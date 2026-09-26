@@ -46,6 +46,23 @@ async function runSuno(session, prompt) {
   }
 }
 
+export async function injectSunoPrompt(session, prompt) {
+  let tab = await sunoTab(session);
+  if (!tab) {
+    tab = await chrome.tabs.create({ url: "https://suno.com/create", active: false });
+    await waitTabComplete(tab.id);
+  }
+  const detail = tab.url ?? "";
+  try {
+    const resp = await chrome.tabs.sendMessage(tab.id, { op: "suno:inject-poc", prompt });
+    return resp?.status
+      ? { ok: resp.ok, status: resp.status, detail: resp.detail ?? detail }
+      : { ok: false, status: "no-response", detail };
+  } catch (err) {
+    return { ok: false, status: "content-script-unreachable", detail: `${detail} — ${String(err)}` };
+  }
+}
+
 export const sunoEngine = {
   name: "Suno",
   url: "https://suno.com",

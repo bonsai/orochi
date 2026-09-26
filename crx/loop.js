@@ -6,9 +6,10 @@
 // Sessions s1..s8 run these engines in parallel, each in its own Tab Group.
 
 import { chatgptEngine } from "./engines/chatgpt.js";
-import { sunoEngine } from "./engines/suno.js";
+import { injectSunoPrompt, sunoEngine } from "./engines/suno.js";
 
 export const ENGINES = { chatgpt: chatgptEngine, suno: sunoEngine };
+export { injectSunoPrompt };
 
 // One loop step for a session, dispatched to its domain engine.
 export async function runGoal(session, prompt) {

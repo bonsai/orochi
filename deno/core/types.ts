@@ -63,7 +63,8 @@ export type BrowserOp =
   | { kind: "group"; sessionId: string }
   | { kind: "focus"; sessionId: string }
   | { kind: "close"; sessionId: string }
-  | { kind: "loop"; sessionId: string; prompt: string; engine?: EngineId };
+  | { kind: "loop"; sessionId: string; prompt: string; engine?: EngineId }
+  | { kind: "suno-poc"; sessionId: string; prompt: string };
 
 export type RunId = string;
 
