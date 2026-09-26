@@ -1,89 +1,132 @@
+<#
+.SYNOPSIS
+  Guide the Suno CRX POC setup on Windows PowerShell.
+
+.DESCRIPTION
+  Run from the repository root. It:
+    - Detects Deno (installs it with -InstallDeno)
+    - Verifies crx/manifest.json and the crx/ directory, prints the Chrome
+      "Load unpacked" path
+    - Runs deno task check (exit code is propagated)
+    - Runs deno task test when -RunTests is set (non-zero exit on failure)
+    - Prints the POC commands
+    - Starts the runtime when -StartRuntime is set
+
+  Out of scope: song generation, mp3 download, mpv playback.
+
+.NOTES
+  Works when the repository lives on a UNC path (for example
+  \\wsl.localhost\Ubuntu-24.04\home\<user>\orochi): native commands are run
+  through `cmd /c pushd` so they get a real working directory.
+
+.EXAMPLE
+  .\scripts\install-suno-crx-poc.ps1 -InstallDeno -RunTests -StartRuntime
+#>
 [CmdletBinding()]
 param(
-  [string]$RepoRoot = (Split-Path -Parent $PSScriptRoot),
-  [switch]$InstallDeno,
-  [switch]$RunTests,
-  [switch]$StartRuntime
+    [switch]$InstallDeno,
+    [switch]$RunTests,
+    [switch]$StartRuntime,
+    [string]$DenoTask = "dev"
 )
 
 $ErrorActionPreference = "Stop"
 
-function Stop-WithMessage([string]$Message) {
-  Write-Error $Message
-  exit 1
+function Write-Step($msg) { Write-Host "==> $msg" -ForegroundColor Cyan }
+function Write-Ok($msg)   { Write-Host "  OK  $msg" -ForegroundColor Green }
+function Write-Note($msg) { Write-Host "  --  $msg" -ForegroundColor Yellow }
+function Fail($msg) { Write-Host "  NG  $msg" -ForegroundColor Red; exit 1 }
+
+# Repository root = parent of this script directory.
+$RepoRoot = Split-Path -Parent $PSScriptRoot
+Write-Step "Repo root: $RepoRoot"
+
+# Run a command with the repository root as its working directory and
+# return its exit code. Output is sent to the host so it is not mixed into
+# the return value. A UNC path cannot be a process working directory, so use
+# `cmd pushd`, which maps a temporary drive letter.
+function Invoke-InRepo([string]$Command) {
+    if ($RepoRoot.StartsWith("\\")) {
+        cmd.exe /c "pushd `"$RepoRoot`" 2>nul && $Command" | Out-Host
+    } else {
+        Push-Location -LiteralPath $RepoRoot
+        try { Invoke-Expression "$Command | Out-Host" } finally { Pop-Location }
+    }
+    return $LASTEXITCODE
 }
 
-if ($env:OS -ne "Windows_NT") {
-  Stop-WithMessage "このスクリプトはWindows PowerShell用です。Windows上で実行してください。"
-}
+$CrxDir   = Join-Path $RepoRoot "crx"
+$Manifest = Join-Path $CrxDir "manifest.json"
 
-$RepoRoot = (Resolve-Path $RepoRoot).Path
-$DenoJson = Join-Path $RepoRoot "deno.json"
-$Manifest = Join-Path $RepoRoot "crx\manifest.json"
-if (!(Test-Path $DenoJson) -or !(Test-Path $Manifest)) {
-  Stop-WithMessage "Orochiリポジトリを認識できません: $RepoRoot"
+# 1. Check the POC files.
+Write-Step "Checking POC files"
+if (-not (Test-Path -LiteralPath $CrxDir))   { Fail "crx/ not found: $CrxDir" }
+if (-not (Test-Path -LiteralPath $Manifest)) { Fail "crx/manifest.json not found: $Manifest" }
+if (-not (Test-Path -LiteralPath (Join-Path $RepoRoot "deno.json"))) {
+    Fail "deno.json not found (run this from the repository root)"
 }
+Write-Ok "crx/ and crx/manifest.json present"
 
-function Get-DenoCommand {
-  $command = Get-Command deno -ErrorAction SilentlyContinue
-  if ($command) { return $command.Source }
-  $candidate = Join-Path $env:USERPROFILE ".deno\bin\deno.exe"
-  if (Test-Path $candidate) { return $candidate }
-  return $null
+# 2. Detect or install Deno.
+Write-Step "Checking Deno"
+$deno = Get-Command deno -ErrorAction SilentlyContinue
+if (-not $deno) {
+    if ($InstallDeno) {
+        Write-Note "Deno not found. Installing."
+        try {
+            Invoke-Expression (Invoke-RestMethod https://deno.land/install.ps1)
+        } catch {
+            Fail "Deno install failed: $_"
+        }
+        $denoHome = Join-Path $env:USERPROFILE ".deno\bin"
+        if (Test-Path -LiteralPath $denoHome) { $env:Path = "$denoHome;$env:Path" }
+        $deno = Get-Command deno -ErrorAction SilentlyContinue
+        if (-not $deno) { Fail "deno still not found after install. Open a new terminal and retry." }
+    } else {
+        Fail "deno not found. Re-run with -InstallDeno."
+    }
 }
+$denoVersion = (& deno --version | Select-Object -First 1)
+Write-Ok "deno: $denoVersion"
 
-$Deno = Get-DenoCommand
-if (!$Deno -and $InstallDeno) {
-  Write-Host "Denoを公式インストーラーからインストールします..."
-  irm https://deno.land/install.ps1 | iex
-  $denoBin = Join-Path $env:USERPROFILE ".deno\bin"
-  if (Test-Path $denoBin) { $env:Path = "$denoBin;$env:Path" }
-  $Deno = Get-DenoCommand
-}
-if (!$Deno) {
-  Stop-WithMessage "Denoが見つかりません。再実行: .\scripts\install-suno-crx-poc.ps1 -InstallDeno"
-}
+# 3. Chrome "Load unpacked" path.
+Write-Step "Chrome extension (Load unpacked)"
+Write-Host "  Open chrome://extensions, enable Developer mode," -ForegroundColor Gray
+Write-Host "  click 'Load unpacked' and select:" -ForegroundColor Gray
+Write-Host "    $CrxDir" -ForegroundColor White
 
-Write-Host "[1/4] Deno: $(& $Deno --version | Select-Object -First 1)"
-Write-Host "[2/4] TypeScriptチェック"
-& $Deno task check
-if ($LASTEXITCODE -ne 0) { Stop-WithMessage "Deno checkに失敗しました。" }
+# 4. deno task check.
+Write-Step "deno task check"
+$code = Invoke-InRepo "deno task check"
+if ($code -ne 0) { Fail "deno task check failed (exit $code)" }
+Write-Ok "check passed"
 
+# 5. deno task test (optional).
 if ($RunTests) {
-  Write-Host "[3/4] Denoテスト"
-  & $Deno task test
-  if ($LASTEXITCODE -ne 0) { Stop-WithMessage "Deno testに失敗しました。" }
+    Write-Step "deno task test"
+    $code = Invoke-InRepo "deno task test"
+    if ($code -ne 0) { Fail "deno task test failed (exit $code)" }
+    Write-Ok "test passed"
 } else {
-  Write-Host "[3/4] Denoテスト: 未実行（実行する場合は -RunTests）"
+    Write-Note "tests skipped (use -RunTests)"
 }
 
-$chromeCandidates = @(
-  (Join-Path ${env:ProgramFiles} "Google\Chrome\Application\chrome.exe"),
-  (Join-Path ${env:ProgramFiles(x86)} "Google\Chrome\Application\chrome.exe"),
-  (Join-Path $env:LOCALAPPDATA "Google\Chrome\Application\chrome.exe")
-)
-$chrome = $chromeCandidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
-Write-Host "[4/4] CRX: $Manifest"
-if ($chrome) {
-  Write-Host "Chrome: $chrome"
-} else {
-  Write-Warning "Chromeの実行ファイルを自動検出できませんでした。"
-}
+# 6. POC commands.
+Write-Step "POC commands"
+Write-Host "  # start the runtime (separate terminal)" -ForegroundColor Gray
+Write-Host "  deno task dev" -ForegroundColor Gray
+Write-Host "" -ForegroundColor Gray
+Write-Host "  # open a Suno session (engine=suno)" -ForegroundColor Gray
+Write-Host "  deno task cli -- session open https://suno.com/create suno" -ForegroundColor Gray
+Write-Host "" -ForegroundColor Gray
+Write-Host "  # inject a dummy prompt into /create via CRX (no Generate click)" -ForegroundColor Gray
+Write-Host "  deno task cli -- suno gen auto <session-id>" -ForegroundColor Gray
 
-Write-Host ""
-Write-Host "Chromeで chrome://extensions を開き、Developer mode → Load unpacked → 次を選択してください:"
-Write-Host (Join-Path $RepoRoot "crx")
-Write-Host ""
-Write-Host "POC実行コマンド:"
-Write-Host "  deno task dev"
-Write-Host "  deno task cli session open https://github.com/bonsai/orochi suno"
-Write-Host "  deno task cli browser open <session-id> https://suno.com/create"
-Write-Host "  deno task cli suno gen auto <session-id>"
-Write-Host "  deno task cli debug logs"
-Write-Host ""
-Write-Host "注意: suno gen autoはダミーpromptを入力するだけで、Generate/Createはクリックしません。"
-
+# 7. Start runtime (optional).
 if ($StartRuntime) {
-  Write-Host "runtimeを起動します。"
-  Start-Process -FilePath $Deno -ArgumentList @("task", "dev") -WorkingDirectory $RepoRoot
+    Write-Step "Starting runtime: deno task $DenoTask"
+    $code = Invoke-InRepo "deno task $DenoTask"
+    exit $code
 }
+
+Write-Step "Done"
