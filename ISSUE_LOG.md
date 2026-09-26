@@ -4,6 +4,8 @@
 
 ## 2026-09-26
 
+- #54: 未処理 branch を main へ統合。PR #42（manus-engine, draft 解除）/ #39（runtime-orchestration-ports, types.ts 競合を main 側 `suno-poc` と両立）/ #47（suno-crx-poc-script, add/add を PR 側新版で解消）を squash merge。PR #38（差分 0）は close
+- #54: 統合後の `origin/main` で `deno task check` / `deno task test` 通過（18 passed）。squash commit: `76a6100` / `ab9466e` / `5a22ef1`
 - Suno CLI を orochi に吸収（`tools/suno/` = CLI + OpenSuno overlay + apply-overlay + README）→ PR #48
 - 現行 suno.com 対応の overlay: `__session` Cookie の JWT、Turnstile 自前 render、captcha DEBUG 解除、Bun idleTimeout、拡張版番号の自動バンプ
 - 生成の 422 を解消（`/api/generate/v2-web/` + web ヘッダ）。`Rain On Glass`（`c045685d-…`）が complete

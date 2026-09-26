@@ -38,14 +38,16 @@ Orochi = ブラウザを実行基盤にした AI Project Orchestra。CRX / CLI /
 cd ~/orochi && opencode run "issue #NN を実装。受入条件は issue 本文。完了したら PR"
 ```
 
-未処理の branch 統合も同じ扱い（<https://github.com/bonsai/orochi/branches>）:
+未処理の branch 統合（#54）は **完了**（2026-09-26）:
 
-| branch | 内容 | 状態 |
+| branch | 処理 | 結果 |
 |---|---|---|
-| `feat/manus-engine` (PR #42, draft) | `doc/manus-engine.md` のみ | 統合可 |
-| `feat/runtime-orchestration-ports-…` (PR #39) | orchestration/ports/store/types 改修（+402 行） | 統合前にテスト必須 |
-| `feat/suno-crx-poc-script` (PR #47) | `scripts/install-suno-crx-poc.ps1` | 統合可 |
-| `jules-read-issues-…` (PR #38) | main との差分なし | 閉じてよい |
+| `feat/manus-engine` (PR #42) | draft 解除 → squash merge | `76a6100` |
+| `feat/runtime-orchestration-ports-…` (PR #39) | main を取り込み `deno/core/types.ts` の競合を解消（`suno-poc` + Run 型を両立）→ check/test 通過 → squash merge | `ab9466e` |
+| `feat/suno-crx-poc-script` (PR #47) | add/add 競合を PR 側の新版で解消 → squash merge | `5a22ef1` |
+| `jules-read-issues-…` (PR #38) | main との差分 0 のため close | close 済 |
+
+統合後の `origin/main` で `deno task check` / `deno task test` 通過（18 passed）。
 
 ## 環境（前提）
 
