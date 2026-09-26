@@ -1,3 +1,5 @@
+import type { SessionId, RunId, SunoRun } from "./types.ts";
+
 export type TaskId = string;
 
 export type Task = {
@@ -257,4 +259,112 @@ export function blockedTasks(
       return state === "blocked" || state === "failed";
     })
     .map((task) => task.id);
+}
+
+export type BarrierEvaluation = {
+  barrierId: string;
+  waveId: string;
+  satisfied: boolean;
+  missingTests: string[];
+  missingArtifacts: string[];
+  pendingTasks: TaskId[];
+  failedTasks: TaskId[];
+};
+
+export function evaluateBarrier(
+  plan: TaskPlan,
+  barrier: Barrier,
+  results: ReadonlyMap<TaskId, TaskResult>,
+): BarrierEvaluation {
+  const wave = plan.waves.find((w) => w.id === barrier.waveId);
+  if (!wave) {
+    return {
+      barrierId: barrier.id,
+      waveId: barrier.waveId,
+      satisfied: false,
+      missingTests: barrier.requiresTests ?? [],
+      missingArtifacts: barrier.requiresArtifacts ?? [],
+      pendingTasks: [],
+      failedTasks: [],
+    };
+  }
+
+  const waveTaskIds = wave.tasks;
+  const pendingTasks: TaskId[] = [];
+  const failedTasks: TaskId[] = [];
+  const providedTests = new Set<string>();
+  const providedArtifacts = new Set<string>();
+
+  for (const taskId of waveTaskIds) {
+    const res = results.get(taskId);
+    if (!res) {
+      pendingTasks.push(taskId);
+    } else if (res.status === "failed" || res.status === "blocked") {
+      failedTasks.push(taskId);
+    } else if (res.status === "completed") {
+      for (const t of res.testEvidence ?? []) providedTests.add(t);
+      for (const o of res.outputs ?? []) providedArtifacts.add(o);
+    } else {
+      pendingTasks.push(taskId);
+    }
+  }
+
+  const missingTests = (barrier.requiresTests ?? []).filter(
+    (test) => !providedTests.has(test),
+  );
+  const missingArtifacts = (barrier.requiresArtifacts ?? []).filter(
+    (art) => !providedArtifacts.has(art),
+  );
+
+  const satisfied =
+    pendingTasks.length === 0 &&
+    failedTasks.length === 0 &&
+    missingTests.length === 0 &&
+    missingArtifacts.length === 0;
+
+  return {
+    barrierId: barrier.id,
+    waveId: barrier.waveId,
+    satisfied,
+    missingTests,
+    missingArtifacts,
+    pendingTasks,
+    failedTasks,
+  };
+}
+
+export class SessionMutexManager {
+  #activeRuns = new Map<SessionId, RunId>();
+  #idempotencyMap = new Map<string, SunoRun>();
+
+  tryAcquire(sessionId: SessionId, runId: RunId): boolean {
+    const current = this.#activeRuns.get(sessionId);
+    if (current !== undefined && current !== runId) {
+      return false;
+    }
+    this.#activeRuns.set(sessionId, runId);
+    return true;
+  }
+
+  release(sessionId: SessionId, runId: RunId): boolean {
+    if (this.#activeRuns.get(sessionId) === runId) {
+      this.#activeRuns.delete(sessionId);
+      return true;
+    }
+    return false;
+  }
+
+  getActiveRun(sessionId: SessionId): RunId | undefined {
+    return this.#activeRuns.get(sessionId);
+  }
+
+  registerRun(run: SunoRun): void {
+    if (run.idempotencyKey) {
+      this.#idempotencyMap.set(run.idempotencyKey, run);
+    }
+  }
+
+  getRunByIdempotencyKey(key: string): SunoRun | undefined {
+    return this.#idempotencyMap.get(key);
+  }
 }
