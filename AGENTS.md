@@ -13,7 +13,7 @@
 ## 進め方
 
 - 実体はこの repo に置く。外部ツリー（例: `C:\Users\dance\opensuno`）に直接変更を溜めない。
-  外部ツリーへの変更は overlay として repo 側に持つ（例: `tools/suno/overlay/`）。
+  外部ツリーへの変更は overlay として **suno-gen 側**に持つ（`~/repo/suno-gen/bridge/overlay/`）。
 - 節目・終了時に `HANDOVER.md` を現在地へ更新し、`ISSUE_LOG.md` に 1 行追記する。
 - 未検証のものは「暫定」と明記する。完了と言うには再現できる証拠を添える。
 - 破壊的操作（停止・削除・上書き・再起動）は、対象・影響・代替案を 1 行で示して許可を取る。
