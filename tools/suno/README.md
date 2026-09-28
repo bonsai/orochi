@@ -7,11 +7,11 @@ Suno の overlay と CLI は **[bonsai/suno-gen](https://github.com/bonsai/suno-
 
 | 何 | どこ |
 |---|---|
-| OpenSuno への当て込み（overlay の正） | `~/repo/suno-gen/bridge/overlay/` |
-| 当て込みスクリプト | `~/repo/suno-gen/bridge/apply-overlay.sh` |
-| 生成 CLI / ラッパ | `~/repo/suno-gen/scripts/` ・ `~/repo/suno-gen/skills/suno-studio/` |
-| 手順・既知の壁 | `~/repo/suno-gen/bridge/README.md` ・ `~/repo/suno-gen/docs/ARCHITECTURE.md` |
-| 曲・アルバム・台帳 | `~/repo/suno-gen/`（`prompts/` `albums/`） |
+| OpenSuno への当て込み（overlay の正） | `~/.skills/suno-gen/bridge/overlay/` |
+| 当て込みスクリプト | `~/.skills/suno-gen/bridge/apply-overlay.sh` |
+| 生成 CLI / ラッパ | `~/.skills/suno-gen/scripts/` ・ `~/.skills/suno-gen/skills/suno-studio/` |
+| 手順・既知の壁 | `~/.skills/suno-gen/bridge/README.md` ・ `~/.skills/suno-gen/docs/ARCHITECTURE.md` |
+| 曲・アルバム・台帳 | `~/.skills/suno-gen/`（`prompts/` `albums/`） |
 
 ## OpenSuno 本体
 
@@ -20,7 +20,7 @@ suno-gen 側に持ち、上流追従時に当て直す。
 
 ```bash
 # 当て込み（初回 / 上流追従の後）
-~/repo/suno-gen/bridge/apply-overlay.sh /mnt/c/Users/dance/opensuno
+~/.skills/suno-gen/bridge/apply-overlay.sh /mnt/c/Users/dance/opensuno
 cd /mnt/c/Users/dance/opensuno && bun run ext:build
 ```
 
