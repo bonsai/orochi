@@ -143,14 +143,14 @@ async function saveChatImageNow(message) {
   const seq=Math.max(1,Math.floor(Number(settings.orochiImageSequence)||1));
   const subfolder=String(settings.orochiImageSubfolder||"orochi-images").split("/").filter(Boolean).map(safeFolder).join("/");
   const ext=(String(message.extension||"png").match(/^(png|jpe?g|webp|gif)$/i)||["png"])[0].toLowerCase().replace("jpeg","jpg");
-  const filename=\`\${subfolder}/\${paper}/source/\${String(seq).padStart(3,"0")}-chatgpt-image.\${ext}\`;
+  const filename=`${subfolder}/${paper}/source/${String(seq).padStart(3,"0")}-chatgpt-image.${ext}`;
   const key=paper+"|"+url;
   if(seenImageUrls.has(key)) return {ok:true,skipped:true,filename};
   seenImageUrls.add(key);
   try {
     const downloadId=await chrome.downloads.download({url,filename,conflictAction:"uniquify",saveAs:false});
     await chrome.storage.local.set({orochiImageSequence:seq+1,orochiImageLastSaved:{filename,downloadId,at:new Date().toISOString()}});
-    await logFromCrx("info",\`image saved \${filename}\`,"image-saver");
+    await logFromCrx("info",`image saved ${filename}`,"image-saver");
     return {ok:true,filename,downloadId};
   } catch(error) { seenImageUrls.delete(key); throw error; }
 }
@@ -166,7 +166,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
   }
   if(message?.type==="OROCHI_CHAT_IMAGE_CANDIDATE") {
     chrome.storage.local.get({orochiImageAutoSave:false}).then(({orochiImageAutoSave})=>{
-      if(orochiImageAutoSave) saveChatImage(message).catch(error=>logFromCrx("warn",\`image auto-save failed: \${String(error)}\`,"image-saver"));
+      if(orochiImageAutoSave) saveChatImage(message).catch(error=>logFromCrx("warn",`image auto-save failed: ${String(error)}`,"image-saver"));
     });
   }
 });
