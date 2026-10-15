@@ -1,15 +1,10 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Orochi Setup</title>
-</head>
-<body>
-  <main>
-    <h1>Orochi Setup</h1>
-    <p id="status">Checking local Orochi...</p>
-    <p id="auth">Authentication is handled by the local runtime.</p>
-  </main>
-  <script type="module" src="options.js"></script>
-</body>
-</html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Orochi Setup</title>
+<style>body{font:15px system-ui,sans-serif;max-width:760px;margin:32px auto;padding:0 18px;color:#202938}label{display:block;margin:18px 0 6px;font-weight:600}input[type=text]{box-sizing:border-box;width:100%;padding:9px}button{margin-top:18px;padding:9px 14px}small{color:#555}</style></head>
+<body><main><h1>Orochi Setup</h1><p id="status">設定を読み込み中…</p>
+<label for="paperId">既定の paper ID</label><input type="text" id="paperId" placeholder="lora-2106-09685">
+<label><input id="autoSave" type="checkbox" style="width:auto"> 検出した画像を自動保存（初期値OFF）</label>
+<label for="subfolder">ダウンロード内の相対フォルダ</label><input type="text" id="subfolder" value="orochi-images">
+<small>絶対パスは指定できません。Edge の既定ダウンロード先を OneDrive の Pictures に設定してください。</small><br>
+<button id="save">設定を保存</button><span id="result" role="status"></span>
+<p>YAML のローカルパスは config/video-pipeline.example.yaml を参照。</p></main><script type="module" src="options.js"></script></body></html>
