@@ -133,7 +133,7 @@ chrome.tabs.onActivated.addListener(async ({tabId})=>{const tab=await chrome.tab
 const seenImageUrls = new Set();
 let imageSaveQueue = Promise.resolve();
 function safeFolder(value) {
-  return String(value||"paper-001").trim().replace(/[<>:"/\\|?*\x00-\x1F]/g,"-").replace(/\s+/g,"-").replace(/^[-.]+|[-.]+$/g,"").slice(0,80)||"paper-001";
+  return String(value||"paper-001").trim().replace(/[<>:"|?*]/g,"-").replace(/\s+/g,"-").replace(/^[-.]+|[-.]+$/g,"").slice(0,80)||"paper-001";
 }
 async function saveChatImageNow(message) {
   const url=String(message.url||"");
