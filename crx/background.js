@@ -171,3 +171,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
   }
 });
 
+
+chrome.runtime.onInstalled.addListener(()=>schedulePolling());
+chrome.runtime.onStartup.addListener(()=>schedulePolling());
+chrome.alarms.onAlarm.addListener(alarm=>{if(alarm.name==="orochi-poll")wakePolling();});
