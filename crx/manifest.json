@@ -1,39 +1,24 @@
 {
   "manifest_version": 3,
   "name": "Orochi",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "AI Project Orchestra for the Browser",
-  "permissions": [
-    "tabs",
-    "tabGroups",
-    "storage",
-    "alarms"
-  ],
+  "permissions": ["tabs", "tabGroups", "storage", "alarms", "downloads"],
   "host_permissions": [
     "http://127.0.0.1:8787/*",
     "http://localhost:8787/*",
     "https://github.com/*",
     "https://chatgpt.com/*",
+    "https://*.oaiusercontent.com/*",
+    "https://*.openai.com/*",
     "https://suno.com/*",
     "https://www.suno.com/*"
   ],
-  "background": {
-    "service_worker": "background.js",
-    "type": "module"
-  },
+  "background": {"service_worker": "background.js", "type": "module"},
   "content_scripts": [
-    {
-      "matches": [
-        "https://suno.com/*",
-        "https://www.suno.com/*"
-      ],
-      "js": ["suno-content.js"],
-      "run_at": "document_idle"
-    }
+    {"matches": ["https://suno.com/*", "https://www.suno.com/*"], "js": ["suno-content.js"], "run_at": "document_idle"},
+    {"matches": ["https://chatgpt.com/*"], "js": ["image-saver-content.js"], "run_at": "document_idle"}
   ],
   "options_page": "options.html",
-  "action": {
-    "default_title": "Orochi",
-    "default_popup": "popup.html"
-  }
+  "action": {"default_title": "Orochi", "default_popup": "popup.html"}
 }
