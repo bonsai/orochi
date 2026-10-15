@@ -132,49 +132,7 @@ chrome.tabs.onActivated.addListener(async ({tabId})=>{const tab=await chrome.tab
 // ChatGPT image saver: paper-scoped downloads, shared Orochi CRX.
 const seenImageUrls = new Set();
 let imageSaveQueue = Promise.resolve();
-  return String(value||"paper-001").trim().replace(/[<>:"/\\|?*\x00-\x1F]/g,"-").replace(/\s+/g,"-").replace(/^[-.]+|[-.]+$/g,"").slice(0,80)||"paper-001";
-  return String(value||"paper-001").trim().replace(/[<>:"/\\\\|?*\\x00-\\x1F]/g,"-").replace(/\\s+/g,"-").replace(/^[-.]+|[-.]+$/g,"").slice(0,80)||"paper-001";
-}
-async function saveChatImageNow(message) {
-  if(!/^https?:\/\//i.test(url)) throw new Error("Only http(s) image URLs are supported in this POC; blob URLs need a page-context bridge.");
-  if(!/^https?:\\/\\//i.test(url)) throw new Error("Only http(s) image URLs are supported in this POC; blob URLs need a page-context bridge.");
-  const settings=await chrome.storage.local.get({orochiImagePaperId:"paper-001",orochiImageAutoSave:false,orochiImageSequence:1,orochiImageSubfolder:"orochi-images"});
-  const paper=safeFolder(message.paperId||settings.orochiImagePaperId);
-  const seq=Math.max(1,Math.floor(Number(settings.orochiImageSequence)||1));
-  const subfolder=String(settings.orochiImageSubfolder||"orochi-images").split("/").filter(Boolean).map(safeFolder).join("/");
-  const ext=(String(message.extension||"png").match(/^(png|jpe?g|webp|gif)$/i)||["png"])[0].toLowerCase().replace("jpeg","jpg");
-  const filename=`${subfolder}/${paper}/source/${String(seq).padStart(3,"0")}-chatgpt-image.${ext}`;
-  const key=paper+"|"+url;
-  if(seenImageUrls.has(key)) return {ok:true,skipped:true,filename};
-  seenImageUrls.add(key);
-  try {
-    const downloadId=await chrome.downloads.download({url,filename,conflictAction:"uniquify",saveAs:false});
-    await chrome.storage.local.set({orochiImageSequence:seq+1,orochiImageLastSaved:{filename,downloadId,at:new Date().toISOString()}});
-    await logFromCrx("info",`image saved ${filename}`,"image-saver");
-    return {ok:true,filename,downloadId};
-  } catch(error) { seenImageUrls.delete(key); throw error; }
-}
-function saveChatImage(message) {
-  const task=imageSaveQueue.then(()=>saveChatImageNow(message));
-  imageSaveQueue=task.catch(()=>{});
-  return task;
-}
-chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
-  if(message?.type==="OROCHI_SAVE_CHAT_IMAGE") {
-    saveChatImage(message).then(sendResponse).catch(error=>sendResponse({ok:false,error:String(error?.message||error)}));
-    return true;
-  }
-  if(message?.type==="OROCHI_CHAT_IMAGE_CANDIDATE") {
-    chrome.storage.local.get({orochiImageAutoSave:false}).then(({orochiImageAutoSave})=>{
-      if(orochiImageAutoSave) saveChatImage(message).catch(error=>logFromCrx("warn",`image auto-save failed: ${String(error)}`,"image-saver"));
-    });
-  }
-});
-
-
-chrome.runtime.onInstalled.addListener(()=>schedulePolling());
-chrome.runtime.onStartup.addListener(()=>schedulePolling());
-chrome.alarms.onAlarm.addListener(alarm=>{if(alarm.name==="orochi-poll")wakePolling();});function safeFolder(value) {
+function safeFolder(value) {
   return String(value||"paper-001").trim().replace(/[<>:"/\\|?*\x00-\x1F]/g,"-").replace(/\s+/g,"-").replace(/^[-.]+|[-.]+$/g,"").slice(0,80)||"paper-001";
 }
 async function saveChatImageNow(message) {
@@ -185,14 +143,14 @@ async function saveChatImageNow(message) {
   const seq=Math.max(1,Math.floor(Number(settings.orochiImageSequence)||1));
   const subfolder=String(settings.orochiImageSubfolder||"orochi-images").split("/").filter(Boolean).map(safeFolder).join("/");
   const ext=(String(message.extension||"png").match(/^(png|jpe?g|webp|gif)$/i)||["png"])[0].toLowerCase().replace("jpeg","jpg");
-  const filename=`${subfolder}/${paper}/source/${String(seq).padStart(3,"0")}-chatgpt-image.${ext}`;
+  const filename=\`\${subfolder}/\${paper}/source/\${String(seq).padStart(3,"0")}-chatgpt-image.\${ext}\`;
   const key=paper+"|"+url;
   if(seenImageUrls.has(key)) return {ok:true,skipped:true,filename};
   seenImageUrls.add(key);
   try {
     const downloadId=await chrome.downloads.download({url,filename,conflictAction:"uniquify",saveAs:false});
     await chrome.storage.local.set({orochiImageSequence:seq+1,orochiImageLastSaved:{filename,downloadId,at:new Date().toISOString()}});
-    await logFromCrx("info",`image saved ${filename}`,"image-saver");
+    await logFromCrx("info",\`image saved \${filename}\`,"image-saver");
     return {ok:true,filename,downloadId};
   } catch(error) { seenImageUrls.delete(key); throw error; }
 }
@@ -208,12 +166,10 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
   }
   if(message?.type==="OROCHI_CHAT_IMAGE_CANDIDATE") {
     chrome.storage.local.get({orochiImageAutoSave:false}).then(({orochiImageAutoSave})=>{
-      if(orochiImageAutoSave) saveChatImage(message).catch(error=>logFromCrx("warn",`image auto-save failed: ${String(error)}`,"image-saver"));
+      if(orochiImageAutoSave) saveChatImage(message).catch(error=>logFromCrx("warn",\`image auto-save failed: \${String(error)}\`,"image-saver"));
     });
   }
 });
-
-
 chrome.runtime.onInstalled.addListener(()=>schedulePolling());
 chrome.runtime.onStartup.addListener(()=>schedulePolling());
 chrome.alarms.onAlarm.addListener(alarm=>{if(alarm.name==="orochi-poll")wakePolling();});
