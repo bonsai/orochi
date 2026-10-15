@@ -132,11 +132,11 @@ chrome.tabs.onActivated.addListener(async ({tabId})=>{const tab=await chrome.tab
 // ChatGPT image saver: paper-scoped downloads, shared Orochi CRX.
 const seenImageUrls = new Set();
 let imageSaveQueue = Promise.resolve();
-function safeFolder(value) {
+  return String(value||"paper-001").trim().replace(/[<>:"/\\|?*\x00-\x1F]/g,"-").replace(/\s+/g,"-").replace(/^[-.]+|[-.]+$/g,"").slice(0,80)||"paper-001";
   return String(value||"paper-001").trim().replace(/[<>:"/\\\\|?*\\x00-\\x1F]/g,"-").replace(/\\s+/g,"-").replace(/^[-.]+|[-.]+$/g,"").slice(0,80)||"paper-001";
 }
 async function saveChatImageNow(message) {
-  const url=String(message.url||"");
+  if(!/^https?:\/\//i.test(url)) throw new Error("Only http(s) image URLs are supported in this POC; blob URLs need a page-context bridge.");
   if(!/^https?:\\/\\//i.test(url)) throw new Error("Only http(s) image URLs are supported in this POC; blob URLs need a page-context bridge.");
   const settings=await chrome.storage.local.get({orochiImagePaperId:"paper-001",orochiImageAutoSave:false,orochiImageSequence:1,orochiImageSubfolder:"orochi-images"});
   const paper=safeFolder(message.paperId||settings.orochiImagePaperId);
