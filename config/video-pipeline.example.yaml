@@ -1,0 +1,20 @@
+# Copy to config/video-pipeline.yaml and edit for this PC.
+# Set Edge default Downloads to the local OneDrive Pictures sync folder.
+# Example PowerShell: $env:ONEDRIVE_PICTURES = "$HOME\OneDrive\Documents\Pictures"
+version: 1
+paths:
+  pictures_root: "${ONEDRIVE_PICTURES}"
+  image_inbox: "${ONEDRIVE_PICTURES}/orochi-images"
+  work_root: "./work"
+  frames: "./work/frames"
+  audio: "./work/audio"
+  video: "./work/video"
+source:
+  provider: "chatgpt-image-library"
+  paper_id: "lora-2106-09685"
+  input_glob: "${ONEDRIVE_PICTURES}/orochi-images/lora-2106-09685/source/*"
+pipeline:
+  split_four_panel: true
+  tts: true
+  mux_video: true
+  keep_source_images: true
