@@ -147,3 +147,10 @@ Secrets and GitHub authentication should be handled by the local/runtime layer r
 Early architecture / MVP.
 
 Repository: https://github.com/bonsai/orochi
+
+
+## task2issue PRD
+
+自由文の intent と実装コンテキストを分離し、repo候補・重複Issue・根拠・信頼度をプレビューしてから起票するエージェント仕様は [doc/task2issue-prd.md](doc/task2issue-prd.md) を参照。曖昧な振り分けでは自動起票しない。
+
+Related: [Issue #64](https://github.com/bonsai/orochi/issues/64)
