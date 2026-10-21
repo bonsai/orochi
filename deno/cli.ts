@@ -1,4 +1,5 @@
 import { api, ApiError } from "./http.ts";
+import { browserBackend, CdpClient, WsBridgeClient } from "./browser.ts";
 
 const DEFAULT_PORT = Number(Deno.env.get("OROCHI_PORT") || 8787);
 
@@ -61,6 +62,43 @@ function usage(): never {
 
 const { positional } = parseArgs();
 const [command, sub, value] = positional;
+
+// Explicit browser transport selector. CDP talks to Chrome directly; WS uses a
+// configured bridge; CRX enqueues operations for the logged-in extension session.
+if (command === "browser" && sub === "--via") {
+  const backend = browserBackend(value);
+  const args = positional.slice(3);
+  const action = args[0];
+  if (!action || action === "help") usage();
+  if (backend === "cdp") {
+    const client = await CdpClient.connect();
+    try {
+      if (action === "tabs") console.log(JSON.stringify(client.targets().map(({ id, type, title, url }) => ({ id, type, title, url })), null, 2));
+      else if (action === "url") console.log(String(await client.evaluate("location.href")));
+      else if (action === "eval") {
+        const expression = args.slice(1).join(" ");
+        if (!expression) usage();
+        console.log(JSON.stringify(await client.evaluate(expression), null, 2));
+      } else if (action === "navigate") {
+        const url = args[1];
+        if (!url || !/^https?:\\/\\//i.test(url)) usage();
+        console.log(JSON.stringify(await client.send("Page.navigate", { url }), null, 2));
+      } else usage();
+    } finally { client.close(); }
+  } else if (backend === "ws") {
+    const client = await WsBridgeClient.connect();
+    try {
+      const params = args[1] ? JSON.parse(args.slice(1).join(" ")) as Record<string, unknown> : {};
+      console.log(JSON.stringify(await client.request(action, params), null, 2));
+    } finally { client.close(); }
+  } else {
+    const sessionId = args[1];
+    if (!sessionId || !["open", "group", "focus", "close"].includes(action)) usage();
+    const urls = args.slice(2);
+    console.log(JSON.stringify(await call("/browser/commands", "POST", { op: { kind: action, sessionId, ...(urls.length ? { urls } : {}) } }), null, 2));
+  }
+  Deno.exit(0);
+}
 
 switch (`${command} ${sub ?? ""}`) {
   case "resolve": {
