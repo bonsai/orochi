@@ -15,3 +15,4 @@
 - issue 起票: #49（422/ DL）、#50（正式経路化）、#51（GUI 追従）、#52（実行基盤）。#40 に進捗を集約
 - HANDOVER.md / ISSUE_LOG.md を新設（opencode 等への引き継ぎ用）
 - 主従を明文化: **計画=pi / 実装=opencode**（`AGENTS.md`）。未処理 branch 統合の計画を #54 として起票し、opencode に委譲する形にした
+- 2026-11-12: tools/muse-crx CLI を追加（bonsai/muse-crx 拡張の controller。承認待ち→結果表示、bridge 疎通検証済み）

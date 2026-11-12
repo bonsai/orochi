@@ -24,6 +24,8 @@ Orochi = ブラウザを実行基盤にした AI Project Orchestra。CRX / CLI /
 | mp3 取得（`/api/download/clip/{id}?format=mp3`） | **NG**（`not_authorized` / `Unauthorized`） |
 | mp3 → mpv 再生 | 未到達（上記待ち） |
 
+- 追記（2026-11-12）: `tools/muse-crx/` に muse-crx CLI（controller 側）を追加。拡張と bridge の正本は bonsai/muse-crx repo（承認のみ＝拡張ポップアップで承認されたコマンドだけが CDP 実行される）。bridge＋疑似 ext でのプロトコル疎通は検証済み。実機 Chrome での承認フローは未確認（暫定）。
+
 ## 次の手
 
 1. #52 実行基盤の選定（CRX / WSLg Playwright / CDP / UiPath 等）— 特に「DL が成立する方式」
